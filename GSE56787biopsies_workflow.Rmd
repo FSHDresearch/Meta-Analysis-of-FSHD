@@ -1,0 +1,183 @@
+---
+title: "Analysis of GSE56787 biopsies"
+author: "T. Schaetzl and M. Kohl"
+date: "August 2022"
+output:
+  rmarkdown::html_document:
+    theme: united
+    highlight: tango
+    toc: true
+---
+
+# Loading of required packages
+
+```{r}
+library(tximport)
+library(MKomics)
+library(vsn)
+library(limma)
+library(MKinfer)
+library(VennDiagram)
+library(edgeR)
+library(GO.db)
+library(org.Hs.eg.db)
+```
+
+
+# Import of Salmon Quantification data
+
+```{r}
+SampleInfo <- read.csv("GSE56787_SampleInfo.csv", na.strings = "N/A")
+SampleInfo
+txi <- readRDS(file = "SRP043221.rds")
+head(txi$counts)
+cts <- txi$counts
+cts <- cts[,order(colnames(cts))]
+cts <- cts[,SampleInfo$Experiment_type=='biopsy']
+SampleInfo <- SampleInfo[SampleInfo$Experiment_type=='biopsy',]
+sort(colSums(cts)/1e6)
+```
+
+
+# Quality control of raw data
+
+```{r}
+cts0 <- cts
+cts0[cts0 == 0] <- min(cts0[cts0 != 0])
+boxplot(cts0, log = "y", range = 0, las = 2)
+```
+
+```{r}
+Cor <- cor(cts, method = "spearman")
+corPlot2(Cor, minCor = min(Cor), 
+         labels = paste(SampleInfo$SRR),
+         title = "Spearman correlation")
+```
+
+```{r}
+cts <- cts[,SampleInfo$SRR != "SRR1398537"]
+SampleInfo <- SampleInfo[SampleInfo$SRR != "SRR1398537",]
+
+```
+
+```{r}
+Cor <- cor(cts, method = "spearman")
+corPlot2(Cor, minCor = min(Cor), 
+         labels = paste(SampleInfo$SRR),
+         title = "Spearman correlation")
+```
+
+
+# Preprocessing
+
+```{r}
+dge <- DGEList(counts=cts)
+group <- SampleInfo$group
+design <- model.matrix(~ group)
+keep <- filterByExpr(dge, design)
+dge <- dge[keep,,keep.lib.sizes=FALSE]
+dge <- calcNormFactors(dge)
+logCPM <- cpm(dge, log=TRUE, prior.count=3)
+```
+
+
+## Quality control of filtered data
+
+```{r}
+boxplot(logCPM, range = 0, las = 2)
+```
+
+```{r}
+Cor <- cor(logCPM, method = "spearman")
+corPlot2(Cor, minCor = min(Cor), 
+         labels=paste(SampleInfo$subject),
+         title = "Spearman correlation")
+```
+
+```{r}
+meanSdPlot(logCPM)
+```
+
+```{r}
+library(org.Hs.eg.db)
+symbols <- sapply(strsplit(rownames(logCPM), "\\|"), "[", 6)
+ensemblIDs <- sapply(strsplit(rownames(logCPM), "\\|"), "[", 2)
+ensemblIDs <- sapply(strsplit(ensemblIDs, "\\."), "[", 1)
+entrezIDs <- mapIds(org.Hs.eg.db, keys = ensemblIDs, column = "ENTREZID", 
+                    keytype = "ENSEMBL", multiVals = "first")
+```
+
+```{r}
+ExportData <- t(logCPM)
+ExportData <- data.frame(SampleInfo, ExportData)
+saveRDS(ExportData, file = "GSE56787data_biopsy.rds")
+```
+
+
+# Statistical Analysis
+
+## Gene list
+
+```{r}
+library(openxlsx)
+GeneSel <- read.xlsx("FSHDlist.xlsx")
+GeneSel$ENSEMBL <- sapply(strsplit(GeneSel$gene_id, "\\."), "[", 1)
+dim(GeneSel)
+```
+
+```{r}
+logCPM.Genesel <- logCPM[ensemblIDs %in% GeneSel$ENSEMBL,]
+GeneSel[!(GeneSel$ENSEMBL %in% ensemblIDs),]
+```
+
+```{r}
+library(org.Hs.eg.db)
+symbols.Genesel <- sapply(strsplit(rownames(logCPM.Genesel), "\\|"), "[", 6)
+ensemblIDs.Genesel <- sapply(strsplit(rownames(logCPM.Genesel), "\\|"), "[", 2)
+ensemblIDs.Genesel <- sapply(strsplit(ensemblIDs.Genesel, "\\."), "[", 1)
+entrezIDs.Genesel <- mapIds(org.Hs.eg.db, keys = ensemblIDs.Genesel, column = "ENTREZID", 
+                    keytype = "ENSEMBL", multiVals = "first")
+```
+
+```{r}
+library(MKomics)
+fit <- lmFit(logCPM.Genesel,design)
+fit <- eBayes(fit)
+res.GeneSel <- topTable(fit, number = Inf)
+sum(res.GeneSel$P.Value < 0.05)
+# 16 results
+sort(unique(symbols.Genesel[res.GeneSel$P.Value < 0.05]))
+sum(res.GeneSel$adj.P.Val < 0.05)
+# no results
+```
+
+
+### Export of Results, Gene list
+
+```{r}
+res.GeneSel.GSE56787 <- as.data.frame(res.GeneSel)
+res.GeneSel.GSE56787$ENSEMBLE <- ensemblIDs.Genesel
+res.GeneSel.GSE115650GSE56787 <- res.GeneSel.GSE56787[order(res.GeneSel.GSE56787$P.Val),]
+write.csv(res.GeneSel.GSE56787, file = "ResultsGeneSel_GSE56787biopsy.csv", row.names = FALSE)
+save(res.GeneSel.GSE56787, file = "ResultsGeneSel_GSE56787biopsy.RData")
+```
+
+
+## All genes
+
+```{r}
+library(MKomics)
+fit <- lmFit(logCPM,design)
+fit <- eBayes(fit)
+res <- topTable(fit, number = Inf)
+sum(res$P.Value < 0.05)
+sum(res$adj.P.Val < 0.05)
+# no results for adj. p value < 5%
+```
+
+
+# Used software
+
+```{r}
+sessionInfo()
+```
