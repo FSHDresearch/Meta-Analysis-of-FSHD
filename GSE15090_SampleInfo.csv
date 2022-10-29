@@ -1,0 +1,11 @@
+group,no.,subject,muscle,D4Z4_repeats,age,sex
+FSHD,GSM377456,1,biceps,5,49,M
+control,GSM377458,3,biceps,N/A,41, F
+FSHD,GSM377459,4,deltoid,2,30,M
+control,GSM377461,6,deltoid,N/A,38,F
+FSHD,GSM377462,7,deltoid,3,14,F
+control,GSM377464,9,deltoid,N/A,35,F
+FSHD,GSM377465,10,biceps,5,11,M
+control,GSM377467,12,biceps,N/A,16,M
+FSHD,GSM377468,13,biceps,8,38,M
+control,GSM377470,15,biceps,N/A,39,M

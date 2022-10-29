@@ -1,0 +1,11 @@
+group,no,subject,tissue,cell_type,Ecori_blnl_kb,D4Z4_repeats,age,sex,scan_date
+FSHD,GSM641863,patient1,quadriceps,MB,27,7,45,F,10/12/17 19:13
+FSHD,GSM641864,patient1,quadriceps,MT,27,7,45,F,10/12/17 19:14
+FSHD,GSM641865,patient2,rhomboid,MB,23,5,22,F,10/12/17 19:14
+FSHD,GSM641866,patient2,rhomboid,MT,23,5,22,F,10/12/17 19:14
+FSHD,GSM641867,patient3,quadriceps,MB,18,4,13,M,10/12/17 19:15
+FSHD,GSM641868,patient4,deltoid,MT,12,2,14,F,10/12/17 19:15
+control,GSM443914,donor1,quadriceps,MB,N/A,N/A,27,F,13/01/23 14:44
+control,GSM443913,donor1,quadriceps,MT,N/A,N/A,27,F,13/01/23 14:44
+control,GSM443916,donor2,quadriceps,MB,N/A,N/A,23,M,13/01/23 14:45
+control,GSM443915,donor2,quadriceps,MT,N/A,N/A,23,M,13/01/23 14:45

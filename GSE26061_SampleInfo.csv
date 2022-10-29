@@ -1,0 +1,17 @@
+group,type,no,subject,tissue,cell_type,Ecori_blnl_kb,D4Z4_repeats,age,sex
+FSHD,1,GSM639904,patient1,quadriceps,myoblasts,6,1,5,M
+FSHD,1,GSM639905,patient2,quadriceps,myoblasts,27.5,7,71,F
+FSHD,1,GSM639906,patient3,quadriceps,myoblasts,29,7,55,F
+FSHD,1,GSM639907,patient1,quadriceps,myotubes,6,1,5,M
+FSHD,1,GSM639908,patient2,quadriceps,myotubes,27.5,7,71,F
+FSHD,1,GSM639909,patient3,quadriceps,myotubes,29,7,55,F
+FSHD,2,GSM639910,patient4,quadriceps,myoblasts,>38,>10,12,M
+FSHD,2,GSM639911,patient5,quadriceps,myoblasts,>38,>10,17,M
+FSHD,2,GSM639912,patient4,quadriceps,myotubes,>38,>10,12,M
+FSHD,2,GSM639913,patient5,quadriceps,myotubes,>38,>10,17,M
+control,CTRL,GSM639898,donor1,quadriceps,myoblasts,N/A,N/A,62,F
+control,CTRL,GSM639899,donor2,quadriceps,myoblasts,N/A,N/A,77,M
+control,CTRL,GSM639900,donor3,quadriceps,myoblasts,N/A,N/A,55,F
+control,CTRL,GSM639901,donor1,quadriceps,myotubes,N/A,N/A,62,F
+control,CTRL,GSM639902,donor2,quadriceps,myotubes,N/A,N/A,77,M
+control,CTRL,GSM639903,donor3,quadriceps,myotubes,N/A,N/A,55,F
