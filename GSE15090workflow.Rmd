@@ -1,0 +1,170 @@
+---
+title: "Analysis of GSE15090"
+author: "T. Schätzl and M. Kohl"
+date: "May 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+## setup für die Chunks
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+
+# Import of Data
+
+The data are included in dataset GSE15090 of Gene Expression Omnibus:
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE36398
+
+The tar-file was unzipped into a subfolder called GSE36398_RAW. 
+We removed all files containing data about asymptotic people.
+
+We import the data from the CEL-files using Bioconductor package oligo.
+
+```{r}
+library(affy)
+rawData <- ReadAffy(celfile.path = "./GSE15090_RAW")
+rawData
+```
+
+
+# Quality Control
+
+```{r, eval=FALSE}
+library(arrayQualityMetrics)
+arrayQualityMetrics(rawData, outdir = "QC", force = TRUE, do.logtransform = TRUE)
+```
+
+```{r}
+library(MKomics)
+COR <- cor(exprs(rawData), method = "spearman")
+corPlot2(COR, minCor = min(COR), fontsize.axis = 8, 
+         title = "Spearman Correlation of Raw Data")
+```
+
+
+# Preprocessing
+
+We use RMA to preprocess the data.
+
+```{r, cache = TRUE}
+normData <- rma(rawData)
+normData
+```
+
+
+# Quality Control of Preprocessed Data
+
+```{r}
+library(vsn)
+meanSdPlot(normData)
+```
+
+```{r}
+## range = 0: whiskers till most extreme data points
+boxplot(exprs(normData), range = 0, main = "RMA", las = 2, 
+        cex.axis = 0.75)
+```
+
+```{r}
+COR.rma <- cor(exprs(normData), method = "spearman")
+corPlot2(COR.rma, minCor = min(COR.rma), fontsize.axis = 8, 
+         title = "Spearman Correlation of Preprocessed Data")
+```
+
+```{r}
+SampleInfo <- read.csv(file = "GSE15090_SampleInfo.csv", 
+                       na.strings = "N/A")
+SampleInfo
+```
+
+```{r}
+ExportData <- t(exprs(normData))
+ExportData <- data.frame(SampleInfo, ExportData)
+saveRDS(ExportData, file = "GSE15090data.rds")
+```
+
+
+# Statistical Analysis
+
+## Gene list
+
+```{r}
+library(org.Hs.eg.db)
+library(hgu133plus2.db)
+GeneID <- select(hgu133plus2.db, keys = keys(hgu133plus2.db), 
+                 columns = c("ENSEMBL", "ENTREZID", "SYMBOL"))
+```
+
+```{r}
+library(openxlsx)
+GeneSel <- read.xlsx("FSHDlist.xlsx")
+GeneSel$ENSEMBL <- sapply(strsplit(GeneSel$gene_id, "\\."), "[", 1)
+dim(GeneSel)
+```
+
+```{r}
+sum(GeneSel$ENSEMBL %in% GeneID$ENSEMBL)
+GeneSel[!(GeneSel$ENSEMBL %in% GeneID$ENSEMBL),]
+```
+
+```{r}
+GeneID.GeneSel <- GeneID[which(GeneID$ENSEMBL %in% GeneSel$ENSEMBL),]
+GeneID.GeneSel <- GeneID.GeneSel[!duplicated(GeneID.GeneSel),]
+GeneID.GeneSel
+```
+
+```{r}
+ProbeID.GeneSel <- unique(GeneID.GeneSel$PROBEID)
+sel.GeneSel <- rownames(exprs(normData)) %in% ProbeID.GeneSel
+normData.GeneSel <- exprs(normData)[sel.GeneSel,]
+```
+
+```{r}
+res.GeneSel <- mod.t.test(x = normData.GeneSel, group = SampleInfo$group)
+colSums(res.GeneSel[,c(5,6)] < 0.05)
+# results: 8 x p.val & 0 x adj.p.val 
+
+sig.p <- row.names(res.GeneSel)[which(res.GeneSel[,5]<0.05)]
+sig.p
+GeneID.sig.p <- GeneID.GeneSel[GeneID.GeneSel$PROBEID %in% sig.p,]
+GeneID.sig.p
+unique(GeneID.sig.p$SYMBOL)
+```
+
+
+### Export of Results, Gene list
+
+```{r}
+res.GeneSel.GSE15090 <- as.data.frame(res.GeneSel)
+res.GeneSel.GSE15090$PROBEID <- ProbeID.GeneSel
+res.GeneSel.GSE15090 <- merge(res.GeneSel.GSE15090, GeneID.GeneSel, by = "PROBEID", all.x = TRUE)
+res.GeneSel.GSE15090 <- res.GeneSel.GSE15090[order(res.GeneSel.GSE15090$p.value),]
+write.csv(res.GeneSel.GSE15090, file = "ResultsGeneSel_GSE15090.csv", row.names = FALSE)
+save(res.GeneSel.GSE15090, file = "ResultsGeneSel_GSE15090.RData")
+```
+
+
+## All genes
+
+### mod. t-test
+
+```{r}
+library(MKomics)
+res <- mod.t.test (x = exprs(normData), group = SampleInfo$group)
+colSums(res[,c(5,6)] < 0.05)
+# no results for adj. p value < 5%
+```
+
+
+# Used software
+
+```{r}
+sessionInfo()
+```
+

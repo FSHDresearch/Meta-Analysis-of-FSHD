@@ -1,0 +1,309 @@
+---
+title: "Analysis of GSE26852"
+author: "T. Schätzl and M. Kohl"
+date: "May 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+
+```{r setup, include=FALSE}
+## setup für die Chunks
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+
+# Import of Data
+
+The data are included in dataset GSE26852 of Gene Expression Omnibus:
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE26852
+
+The tar-file was unzipped into a subfolder called GSE26852_RAW. 
+We removed all files containing data about inflammatory myopathies (n=7) and dysferlinopathies (n=4).
+
+We import the data from the probe profiles using Bioconductor package lumi.
+
+```{r}
+library(lumi)
+Ilu.Daten <- lumiR(fileName = "GSE26852_non-normalized.txt")
+Ilu.Daten <- Ilu.Daten[,1:15]
+Ilu.Daten
+SampleInfo <- read.csv(file = "GSE26852_SampleInfo.csv", na.strings = "N/A")
+SampleInfo
+Ilu.Daten <- Ilu.Daten[,SampleInfo$disease_state != "T2-STIR-"]
+SampleInfo <- SampleInfo[SampleInfo$disease_state != "T2-STIR-",]
+ProbeID <- read.delim(file = "GSE26852_non-normalized.txt", skip = 1)$X
+library(beadarray)
+Ilu.Daten2 <- readBeadSummaryData(dataFile = "GSE26852_non-normalized.txt", 
+                                  skip = 1, ProbeID = "ProbeID")
+Ilu.Daten2 <- Ilu.Daten2[,1:15]
+Ilu.Daten2
+Ilu.Daten2 <- Ilu.Daten[,SampleInfo$disease_state != "T2-STIR-"]
+SampleInfo <- SampleInfo[SampleInfo$disease_state != "T2-STIR-",]
+
+```
+
+
+# Quality Control
+
+```{r}
+library(arrayQualityMetrics)
+arrayQualityMetrics(Ilu.Daten2, outdir = "QC", force = TRUE,
+                    do.logtransform = TRUE)
+```
+
+
+# Similarity between arrays
+
+```{r}
+library(MKomics)
+COR <- cor(exprs(Ilu.Daten), method = "spearman")
+corPlot2(COR, minCor = min(COR), labels = pData(Ilu.Daten)[,1], 
+        title = "Spearman Correlation")
+```
+
+
+# Boxplots of expression values
+
+```{r}
+lumi::boxplot(Ilu.Daten)
+```
+
+
+# Preprocessing
+
+```{r}
+Ilu.rsn <- rsn(lumiT(Ilu.Daten, method = "log2"))
+```
+
+
+# Quality Control of Preprocessed Data
+
+```{r}
+library(vsn)
+meanSdPlot(Ilu.rsn)
+```
+
+
+# Boxplots of normalized values
+
+```{r}
+boxplot(Ilu.rsn, main = "rsn")
+```
+
+
+# Similarity between arrays
+
+```{r}
+COR.rsn <- cor(exprs(Ilu.rsn))
+corPlot2(COR.rsn, minCor = min(COR), title = "rsn")
+```
+
+```{r}
+ExportData <- t(exprs(Ilu.rsn))
+ExportData <- data.frame(SampleInfo, ExportData)
+saveRDS(ExportData, file = "GSE26852data.rds")
+```
+
+
+## Gene list
+
+```{r}
+library(org.Hs.eg.db)
+library(illuminaHumanv3.db)
+GeneID <- select(illuminaHumanv3.db, keys = keys(illuminaHumanv3.db),
+                 columns = c("ENSEMBL", "ENTREZID", "SYMBOL"))
+```
+
+```{r}
+library(openxlsx)
+GeneSel <- read.xlsx("FSHDlist.xlsx")
+GeneSel$ENSEMBL <- sapply(strsplit(GeneSel$gene_id, "\\."), "[", 1)
+dim(GeneSel)
+```
+
+```{r}
+sum(GeneSel$ENSEMBL %in% GeneID$ENSEMBL)
+GeneSel[!(GeneSel$ENSEMBL %in% GeneID$ENSEMBL),]
+```
+
+```{r}
+GeneID.GeneSel <- GeneID[which(GeneID$ENSEMBL %in% GeneSel$ENSEMBL),]
+GeneID.GeneSel <- GeneID.GeneSel[!duplicated(GeneID.GeneSel),]
+GeneID.GeneSel
+```
+
+```{r}
+ProbeID.GeneSel <- unique(GeneID.GeneSel$PROBEID)
+sel.GeneSel <- ProbeID %in% ProbeID.GeneSel
+Ilu.rsn.GeneSel <- exprs(Ilu.rsn)[sel.GeneSel,]
+```
+
+```{r}
+library(MKomics)
+res.GeneSel <- mod.t.test(x = Ilu.rsn.GeneSel, group = SampleInfo$group)
+res.GeneSel
+colSums(res.GeneSel[,c(5,6)] < 0.05)
+# results: 48 x p.val & 15 x adj.p.val
+row.names(res.GeneSel)[which(res.GeneSel[,6]<0.05)]
+row.names(res.GeneSel)[which(res.GeneSel[,5]<0.05)]
+```
+
+
+### Export of Results, Gene list:
+
+```{r}
+res.GeneSel.GSE26852_stir <- as.data.frame(res.GeneSel)
+res.GeneSel.GSE26852_stir$PROBEID <- ProbeID.GeneSel
+res.GeneSel.GSE26852_stir <- merge(res.GeneSel.GSE26852_stir, GeneID, by = "PROBEID", all.x = TRUE)
+res.GeneSel.GSE26852_stir <- res.GeneSel.GSE26852_stir[order(res.GeneSel.GSE26852_stir$p.value),]
+write.csv(res.GeneSel.GSE26852_stir, file = "ResultsGeneSel_GSE26852.csv", row.names = FALSE)
+save(res.GeneSel.GSE26852_stir, file = "ResultsGeneSel_GSE26852.RData")
+```
+
+
+## All genes
+
+### mod. t-test
+
+```{r}
+library(MKomics)
+res <- mod.t.test(x = exprs(Ilu.rsn), group = SampleInfo$group)
+colSums(res[,c(5,6)] < 0.05)
+# 3489 results for adj. p value < 5%
+```
+
+
+### Export of Results
+
+```{r}
+res.GSE26852_stir <- as.data.frame(res)
+res.GSE26852_stir$PROBEID <- ProbeID
+res.GSE26852_stir <- merge(res.GSE26852_stir, GeneID, by = "PROBEID", all.x = TRUE)
+res.GSE26852_stir <- res.GSE26852_stir[order(res.GSE26852_stir$adj.p.value),]
+write.csv(res.GSE26852_stir, file = "ResultsGSE26852.csv", row.names = FALSE)
+save(res.GSE26852_stir, file = "ResultsGSE26852.RData")
+```
+
+
+### Heatmap 
+
+```{r}
+library(ComplexHeatmap)
+library(circlize)
+library(RColorBrewer)
+## Data selection
+sel <- res$p.value < 0.05 & abs(res$`difference in means`) > 1
+selData <- exprs(Ilu.rsn)[sel,]
+selData <- selData - rowMeans(selData, na.rm = TRUE)
+colnames(selData) <- as.character(SampleInfo$group)
+## Setting colors
+col1 <- rev(brewer.pal(n = 8, name = "RdYlBu"))
+col2 <- brewer.pal(n = 3, name = "Set1")[c(3,1)]
+mycol <- colorRamp2(seq(-2, 2, length = 128), colorRampPalette(col1)(128))
+## Annotation
+df <- data.frame(group = SampleInfo$group)
+ha <- HeatmapAnnotation(df = df,
+                        col = list(Gruppe = c("control" = col2[1],
+                                             "FSHD" = col2[2])))
+## Drawing the Heatmap
+Heatmap(selData, col = mycol, name = "log2-FC", show_row_names = FALSE,
+        top_annotation = ha, show_column_names = TRUE,
+        column_names_gp = gpar(fontsize = 8),
+        clustering_distance_columns = "pearson",
+        show_row_dend = FALSE, km = 4,
+        cluster_columns = TRUE, show_column_dend = TRUE,
+        column_title = "Adj. p Wert < 0.05 und |log2-FC| > 1",
+        show_heatmap_legend = TRUE)
+```
+
+
+### Enrichment Analysis
+
+```{r}
+library(org.Hs.eg.db)
+library(illuminaHumanv3.db)
+GeneID <- select(illuminaHumanv3.db, keys = keys(illuminaHumanv3.db), 
+                 columns = "ENTREZID")
+keys.UP <- ProbeID[(res$`difference in means` > 0 & 
+                                   res$p.value < 0.05)]
+keys.DN <- ProbeID[(res$`difference in means` < 0 & 
+                                   res$p.value < 0.05)]
+GeneID.UP <- select(illuminaHumanv3.db, keys = keys.UP, columns = "ENTREZID")
+GeneID.DN <- select(illuminaHumanv3.db, keys = keys.DN, columns = "ENTREZID")
+```
+
+
+#### Calculation of enrichment for GO
+
+```{r}
+library(limma)
+go <- goana(list(Up = unique(GeneID.UP$ENTREZID), 
+                 Down = unique(GeneID.DN$ENTREZID)), 
+            universe = unique(GeneID$ENTREZID), 
+            species = "Hs")
+go.up <- topGO(go, sort = "up", number = Inf)
+go.up[1:40,]
+go.dn <- topGO(go, sort = "down", number = Inf)
+go.dn[1:40,]
+```
+
+
+### Export of Results: GO
+
+```{r}
+go.up.GSE26852_stir <- go.up
+go.up.GSE26852_stir <- go.up.GSE26852_stir[order(go.up.GSE26852_stir$P.Up),]
+write.csv(go.up.GSE26852_stir, file = "GO.UP_GSE26852.csv", row.names = FALSE)
+save(go.up.GSE26852_stir, file = "GO.UP_GSE26852.RData")
+```
+
+```{r}
+go.dn.GSE26852_stir <- go.dn
+go.dn.GSE26852_stir <- go.dn.GSE26852_stir[order(go.dn.GSE26852_stir$P.Down),]
+write.csv(go.dn.GSE26852_stir, file = "GO.DN_GSE26852.csv", row.names = FALSE)
+save(go.dn.GSE26852_stir, file = "GO.DN_GSE26852.RData")
+```
+
+
+#### Calculation of enrichment for KEGG
+
+```{r}
+kg <- kegga(list(Up = unique(GeneID.UP$ENTREZID), 
+                 Down = unique(GeneID.DN$ENTREZID)), 
+            universe = unique(GeneID$ENTREZID), 
+            species = "Hs")
+kegg.up <- topKEGG(kg, sort = "up", number = Inf)
+kegg.up[1:20,]
+kegg.dn <- topKEGG(kg, sort = "down", number = Inf)
+kegg.dn[1:20,]
+```
+
+
+### Export of Results: KEGG
+
+```{r}
+kegg.up.GSE26852_stir <- kegg.up
+kegg.up.GSE26852_stir <- kegg.up.GSE26852_stir[order(kegg.up.GSE26852_stir$P.Up),]
+write.csv(kegg.up.GSE26852_stir, file = "KEGG.UP_GSE26852.csv", row.names = FALSE)
+save(kegg.up.GSE26852_stir, file = "KEGG.UP_GSE26852.RData")
+```
+
+```{r}
+kegg.dn.GSE26852_stir <- kegg.dn
+kegg.dn.GSE26852_stir <- kegg.dn.GSE26852_stir[order(kegg.dn.GSE26852_stir$P.Down),]
+write.csv(kegg.dn.GSE26852_stir, file = "KEGG.DN_GSE26852.csv", row.names = FALSE)
+save(kegg.dn.GSE26852_stir, file = "KEGG.DN_GSE26852.RData")
+```
+
+
+# Used software
+
+```{r}
+sessionInfo()
+```
+

@@ -1,0 +1,219 @@
+---
+title: "Analysis of GSE36398"
+author: "T. Schätzl and M. Kohl"
+date: "May 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+
+```{r setup, include=FALSE}
+## setup für die Chunks
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+
+# Import of Data
+
+The data are included in dataset GSE36398 of Gene Expression Omnibus:
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE36398
+
+The tar-file was unzipped into a subfolder called GSE36398_RAW. 
+We removed all files with deltoid muscle data because there are both biceps and deltoid muscle biopsies on the same individual with an associated family control in the present data set. This is because the biceps is more affected compared with the deltoid muscle in FSHD. 
+
+We import the data from the CEL-files using Bioconductor package oligo.
+
+```{r}
+library(oligo)
+celFiles <- list.files("./GSE36398_RAW", full.names = TRUE)
+rawData <- read.celfiles(celFiles)
+rawData
+```
+
+
+# Quality Control
+
+```{r, eval=FALSE}
+library(arrayQualityMetrics)
+arrayQualityMetrics(rawData, outdir = "QC", force = TRUE, do.logtransform = TRUE)
+```
+
+In addition, we take a look at RLE (Relative Log Expression) and NUSE (Normalized Unscaled Standard Errors)
+
+```{r}
+fit1 <- fitProbeLevelModel(rawData)
+op <- par(mar = c(12,4,4,2)+0.1)
+RLE(fit1, las = 2, cex.axis = 0.75)
+NUSE(fit1, las = 2, cex.axis = 0.75)
+par(op)
+```
+
+```{r}
+library(MKomics)
+COR <- cor(exprs(rawData), method = "spearman")
+corPlot2(COR, minCor = min(COR), fontsize.axis = 8, 
+         title = "Spearman Correlation of Raw Data")
+```
+
+
+# Preprocessing
+
+We use RMA to preprocess the data.
+
+```{r, cache = TRUE}
+normData <- rma(rawData)
+normData
+```
+
+
+# Quality Control of Preprocessed Data
+
+```{r}
+library(vsn)
+meanSdPlot(normData)
+```
+
+```{r}
+## range = 0: whiskers till most extreme data points
+boxplot(exprs(normData), range = 0, main = "RMA", las = 2, 
+        cex.axis = 0.75)
+```
+
+```{r}
+COR.rma <- cor(exprs(normData), method = "spearman")
+corPlot2(COR.rma, minCor = min(COR.rma), fontsize.axis = 8, signifBar = 3,
+         title = "Spearman Correlation of Preprocessed Data")
+```
+
+Batch effect scan date!
+
+```{r}
+SampleInfo <- read.csv(file = "GSE36398_SampleInfo.csv")
+SampleInfo
+```
+
+
+# Removing of Batch Effects 
+
+We use the empirical Bayes approach proposed by W.E. Johnson, C. Li, and A. Rabinovic. Adjusting batch effects in microarray data using empirical bayes methods. Biostatistics,8(1):118–127, 2007.
+
+```{r}
+library(sva)
+scanDate <- sapply(strsplit(SampleInfo$scan_date, " |T"), "[", 1)
+DF <- data.frame(group = as.factor(SampleInfo$group), 
+                 scanDate = scanDate)
+mod.batch <- model.matrix(~ group, data=DF)
+normDataBatch <- ComBat(dat = normData, 
+                        batch = scanDate, mod = mod.batch, 
+                        par.prior = TRUE, mean.only = TRUE)
+```
+
+```{r}
+meanSdPlot(normDataBatch)
+```
+
+```{r}
+## range = 0: whiskers till most extreme data points
+boxplot(normDataBatch, range = 0, main = "Parametric ComBat", las = 2, 
+        cex.axis = 0.75)
+```
+
+```{r}
+COR.param <- cor(normDataBatch, method = "spearman")
+corPlot2(COR.param, minCor = min(COR.param), fontsize.axis = 8, 
+         title = "Spearman Correlation of Batch Corrected Data", 
+         signifBar = 3)
+```
+
+```{r}
+ExportData <- t(normDataBatch)
+ExportData <- data.frame(SampleInfo, ExportData)
+saveRDS(ExportData, file = "GSE36398data.rds")
+```
+
+
+# Statistical Analysis
+
+## Gene list
+
+```{r}
+library(org.Hs.eg.db)
+library(hugene10sttranscriptcluster.db)
+GeneID <- select(hugene10sttranscriptcluster.db, keys = keys(hugene10sttranscriptcluster.db), 
+                 columns = c("ENSEMBL", "ENTREZID", "SYMBOL"))
+```
+
+```{r}
+library(openxlsx)
+GeneSel <- read.xlsx("FSHDlist.xlsx")
+GeneSel$ENSEMBL <- sapply(strsplit(GeneSel$gene_id, "\\."), "[", 1)
+dim(GeneSel)
+```
+
+```{r}
+sum(GeneSel$ENSEMBL %in% GeneID$ENSEMBL)
+GeneSel[!(GeneSel$ENSEMBL %in% GeneID$ENSEMBL),]
+```
+
+```{r}
+GeneID.GeneSel <- GeneID[which(GeneID$ENSEMBL %in% GeneSel$ENSEMBL),]
+GeneID.GeneSel <- GeneID.GeneSel[!duplicated(GeneID.GeneSel),]
+GeneID.GeneSel
+```
+
+```{r}
+ProbeID.GeneSel <- unique(GeneID.GeneSel$PROBEID)
+sel.GeneSel <- rownames(exprs(normData)) %in% ProbeID.GeneSel
+normDataBatch.GeneSel <- normDataBatch[sel.GeneSel,]
+```
+
+```{r}
+res.Batch.GeneSel.pair <- mod.t.test(x = normDataBatch.GeneSel, 
+                                     group = SampleInfo$group,
+                                     paired = TRUE, 
+                                     subject = SampleInfo$cohort)
+#res.Batch.GeneSel.pair
+colSums(res.Batch.GeneSel.pair[,c(5,6)] < 0.05)
+# results: 29 x p.val & 0 x adj.p.val 
+
+sig.p <- row.names(res.Batch.GeneSel.pair)[which(res.Batch.GeneSel.pair[,5]<0.05)]
+sig.p
+GeneID.sig.p <- GeneID.GeneSel[GeneID.GeneSel$PROBEID %in% sig.p,]
+GeneID.sig.p
+unique(GeneID.sig.p$SYMBOL)
+```
+
+
+### Export of Results, Gene list
+
+```{r}
+res.GeneSel.GSE36398 <- as.data.frame(res.Batch.GeneSel.pair)
+res.GeneSel.GSE36398$PROBEID <- ProbeID.GeneSel
+res.GeneSel.GSE36398 <- merge(res.GeneSel.GSE36398, GeneID.GeneSel, by = "PROBEID", all.x = TRUE)
+res.GeneSel.GSE36398<- res.GeneSel.GSE36398[order(res.GeneSel.GSE36398$p.value),]
+write.csv(res.GeneSel.GSE36398, file = "ResultsGeneSel_GSE36398.csv", row.names = FALSE)
+save(res.GeneSel.GSE36398, file = "ResultsGeneSel_GSE36398.RData")
+```
+
+
+## All genes
+
+### mod. t-test
+
+```{r}
+res <- mod.t.test(x = normDataBatch, group = SampleInfo$group)
+colSums(res[,c(5,6)] < 0.05)
+# no results for adj. p value < 5%
+```
+
+
+# Used software
+
+```{r}
+sessionInfo()
+```
+

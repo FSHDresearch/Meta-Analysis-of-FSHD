@@ -1,0 +1,234 @@
+---
+title: "Analysis of GSE26145"
+author: "T. Schätzl and M. Kohl"
+date: "May 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+
+```{r setup, include=FALSE}
+## setup für die Chunks
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+
+# Import of Data
+
+The data are included in dataset GSE26145 of Gene Expression Omnibus:
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE26145
+
+The tar-file was unzipped into a subfolder called GSE26145_RAW. 
+We removed the disease control.
+
+We import the data from the CEL-files using Bioconductor package oligo.
+
+```{r}
+library(oligo)
+celFiles <- list.files("./GSE26145_RAW", full.names = TRUE)
+rawData <- read.celfiles(celFiles)
+rawData
+```
+
+
+# Quality Control
+
+```{r, eval=FALSE}
+library(arrayQualityMetrics)
+arrayQualityMetrics(rawData, outdir = "QC", force = TRUE, do.logtransform = TRUE)
+```
+
+In addition, we take a look at RLE (Relative Log Expression) and NUSE (Normalized Unscaled Standard Errors)
+
+```{r}
+fit1 <- fitProbeLevelModel(rawData)
+op <- par(mar = c(12,4,4,2)+0.1)
+RLE(fit1, las = 2, cex.axis = 0.75)
+NUSE(fit1, las = 2, cex.axis = 0.75)
+par(op)
+```
+
+```{r}
+library(MKomics)
+COR <- cor(exprs(rawData), method = "spearman")
+corPlot2(COR, minCor = min(COR), fontsize.axis = 8, 
+         title = "Spearman Correlation of Raw Data")
+```
+
+
+# Preprocessing
+
+We use RMA to preprocess the data.
+
+```{r, cache = TRUE}
+normData <- rma(rawData)
+normData
+```
+
+
+# Quality Control of Preprocessed Data
+
+```{r}
+library(vsn)
+meanSdPlot(normData)
+```
+
+```{r}
+## range = 0: whiskers till most extreme data points
+boxplot(exprs(normData), range = 0, main = "RMA", las = 2, 
+        cex.axis = 0.75)
+```
+
+```{r}
+COR.rma <- cor(exprs(normData), method = "spearman")
+corPlot2(COR.rma, minCor = min(COR.rma), fontsize.axis = 8, 
+         title = "Spearman Correlation of Preprocessed Data")
+```
+
+Batch effect scan date?
+
+```{r}
+SampleInfo <- read.csv(file = "GSE26145_SampleInfo.csv", na.strings = "N/A")
+SampleInfo
+```
+
+
+# Removing of Batch Effects
+
+The batch effects cannot be removed because we do not know from the experiment design whether it is a batch effect or an effect between the groups FSHD vs. controls
+
+```{r}
+ExportData <- t(exprs(normData))
+ExportData <- data.frame(SampleInfo, ExportData)
+saveRDS(ExportData, file = "GSE26145data.rds")
+```
+
+
+# Statistical Analysis
+
+## Gene list
+
+```{r}
+library(org.Hs.eg.db)
+library(huex10sttranscriptcluster.db)
+GeneID <- select(huex10sttranscriptcluster.db, keys = keys(huex10sttranscriptcluster.db), 
+                 columns = c("ENSEMBL", "ENTREZID", "SYMBOL"))
+```
+
+```{r}
+library(openxlsx)
+GeneSel <- read.xlsx("FSHDlist.xlsx")
+GeneSel$ENSEMBL <- sapply(strsplit(GeneSel$gene_id, "\\."), "[", 1)
+dim(GeneSel)
+```
+
+```{r}
+sum(GeneSel$ENSEMBL %in% GeneID$ENSEMBL)
+GeneSel[!(GeneSel$ENSEMBL %in% GeneID$ENSEMBL),]
+```
+
+```{r}
+GeneID.GeneSel <- GeneID[which(GeneID$ENSEMBL %in% GeneSel$ENSEMBL),]
+GeneID.GeneSel <- GeneID.GeneSel[!duplicated(GeneID.GeneSel),]
+GeneID.GeneSel
+```
+
+```{r}
+ProbeID.GeneSel <- unique(GeneID.GeneSel$PROBEID)
+sel.GeneSel <- rownames(exprs(normData)) %in% ProbeID.GeneSel
+normData.GeneSel <- exprs(normData)[sel.GeneSel,]
+```
+
+```{r}
+library(limma)
+subject <- factor(SampleInfo$subject)
+cell_type <- factor(SampleInfo$cell_type)
+group <- factor(SampleInfo$group)
+design <- model.matrix(~cell_type*group)
+fit <- lmFit(normData.GeneSel, design)
+fit <- eBayes(fit)
+
+resgroup <- topTable(fit, coef="groupFSHD", number = Inf)
+colSums(resgroup[,c(4,5)] < 0.05) 
+# results: 2 x p.val & 0 x adj.p.val
+sig.p <- row.names(resgroup)[which(resgroup[,4]<0.05)]
+sig.p
+GeneID.sig.p <- GeneID.GeneSel[GeneID.GeneSel$PROBEID %in% sig.p,]
+GeneID.sig.p
+unique(GeneID.sig.p$SYMBOL)
+
+rescelltype <- topTable(fit, coef="cell_typeMT", number = Inf)
+colSums(rescelltype[,c(4,5)] < 0.05)
+# results: 2 x p.val & 0 x adj.p.val
+sig.p <- row.names(rescelltype)[which(rescelltype[,4]<0.05)]
+sig.p
+GeneID.sig.p <- GeneID.GeneSel[GeneID.GeneSel$PROBEID %in% sig.p,]
+GeneID.sig.p
+unique(GeneID.sig.p$SYMBOL)
+
+rescelltypegroup <- topTable(fit, coef="cell_typeMT:groupFSHD", number = Inf)
+colSums(rescelltypegroup[,c(4,5)] < 0.05)
+# no results
+```
+
+
+## Export of Results, Gene list
+
+```{r}
+temp1 <- resgroup
+colnames(temp1) <- paste0("group: ", colnames(resgroup))
+temp2 <- rescelltype
+colnames(temp2) <- paste0("celltype: ", colnames(rescelltype))
+temp3 <- rescelltypegroup
+colnames(temp3) <- paste0("group:celltype: ", 
+                                      colnames(rescelltypegroup))
+res.GeneSel.GSE26145 <- cbind(temp1[order(rownames(temp1)),], temp2[order(rownames(temp2)),], temp3[order(rownames(temp3)),])
+res.GeneSel.GSE26145$PROBEID <- sort(rownames(temp1))
+res.GeneID.GeneSel<-GeneID.GeneSel[GeneID.GeneSel$PROBEID %in% rownames(temp1),]
+res.GeneSel.GSE26145 <- merge(res.GeneSel.GSE26145,res.GeneID.GeneSel, by="PROBEID", all=TRUE)
+rm(temp1,temp2, temp3)
+write.csv(res.GeneSel.GSE26145, file = "ResultsGeneSel_GSE26145.csv")
+save(res.GeneSel.GSE26145, file = "ResultsGeneSel_GSE26145.RData")
+```
+
+
+## All genes
+
+### Analysis of variance
+
+```{r}
+library(limma)
+subject <- factor(SampleInfo$subject)
+cell_type <- factor(SampleInfo$cell_type)
+group <- factor(SampleInfo$group)
+design <- model.matrix(~cell_type*group)
+fit <- lmFit(exprs(normData), design)
+fit <- eBayes(fit)
+
+resgroup <- topTable(fit, coef="groupFSHD", number = Inf)
+sum(resgroup$P.Value < 0.05)
+sum(resgroup$adj.P.Value < 0.05)
+# no results for adj. p value < 5%
+
+rescelltype <- topTable(fit, coef="cell_typeMT", number = Inf)
+sum(rescelltype$P.Val < 0.05)
+sum(rescelltype$adj.P.Val < 0.05)
+# no results for adj. p value < 5%
+
+rescelltypegroup <- topTable(fit, coef="cell_typeMT:groupFSHD", number = Inf)
+sum(rescelltypegroup$P.Val < 0.05)
+sum(rescelltypegroup$adj.P.Val < 0.05)
+# no results for adj. p value < 5%
+```
+
+
+# Used Software
+
+```{r}
+sessionInfo()
+```
+
