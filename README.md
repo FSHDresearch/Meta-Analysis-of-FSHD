@@ -35,4 +35,4 @@ Folder contents:
 
 - VoteCountingMetaAnalysis
 
-    Rmd scripts for vote-counting meta-analses
+    Rmd scripts for vote-counting meta-analyses
