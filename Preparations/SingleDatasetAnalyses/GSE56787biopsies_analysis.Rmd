@@ -1,0 +1,146 @@
+---
+title: "Analysis of GSE56787 biopsies"
+author: "T. Schaetzl and M. Kohl"
+date: "May 2023"
+output:
+  rmarkdown::html_document:
+    theme: united
+    highlight: tango
+    toc: true
+---
+
+```{r setup, include=FALSE}
+## setup for the chunks
+knitr::opts_chunk$set(echo = TRUE, error = TRUE, warning = FALSE, message = FALSE)
+Sys.setlocale("LC_ALL", "English")
+```
+
+
+# Import of Salmon quantification data
+
+```{r}
+SampleInfo <- read.csv("GSE56787_SampleInfo.csv", na.strings = "N/A")
+SampleInfo
+txi <- readRDS(file = "SRP043221.rds")
+cts <- txi$counts
+cts <- cts[,order(colnames(cts))]
+cts <- cts[,SampleInfo$Experiment_type=='biopsy']
+SampleInfo <- SampleInfo[SampleInfo$Experiment_type=='biopsy',]
+sort(colSums(cts)/1e6)
+```
+
+
+# Quality control 
+
+## Boxplot 
+
+```{r}
+cts0 <- cts
+cts0[cts0 == 0] <- min(cts0[cts0 != 0])
+boxplot(cts0, log = "y", range = 0, las = 2)
+```
+
+## Similarity map
+
+```{r}
+library(MKomics)
+Cor <- cor(cts, method = "spearman")
+corPlot2(Cor, minCor = min(Cor), 
+         labels = paste(SampleInfo$SRR),
+         title = "Spearman correlation")
+```
+
+## Outlier removal
+
+```{r}
+cts <- cts[,SampleInfo$SRR != "SRR1398537"]
+SampleInfo <- SampleInfo[SampleInfo$SRR != "SRR1398537",]
+```
+
+## Similarity map without outlier
+
+```{r}
+Cor <- cor(cts, method = "spearman")
+corPlot2(Cor, minCor = min(Cor), 
+         labels = paste(SampleInfo$SRR),
+         title = "Spearman correlation")
+```
+
+
+# Preprocessing
+
+```{r}
+library(limma)
+library(edgeR)
+dge <- DGEList(counts=cts)
+group <- SampleInfo$group
+design <- model.matrix(~ group)
+keep <- filterByExpr(dge, design)
+dge <- dge[keep,,keep.lib.sizes=FALSE]
+dge <- calcNormFactors(dge)
+logCPM <- cpm(dge, log=TRUE, prior.count=3)
+```
+
+
+# Quality control of preprocessed data
+
+## Boxplot
+
+```{r}
+boxplot(logCPM, range = 0, las = 2)
+```
+
+## Similarity map
+
+```{r}
+Cor <- cor(logCPM, method = "spearman")
+corPlot2(Cor, minCor = min(Cor), 
+         labels=paste(SampleInfo$subject),
+         title = "Spearman correlation")
+```
+
+## Mean-SD plot
+
+```{r}
+library(vsn)
+meanSdPlot(logCPM)
+```
+
+## Loading annotation data
+
+```{r}
+library(org.Hs.eg.db)
+symbols <- sapply(strsplit(rownames(logCPM), "\\|"), "[", 6)
+ensemblIDs <- sapply(strsplit(rownames(logCPM), "\\|"), "[", 2)
+ensemblIDs <- sapply(strsplit(ensemblIDs, "\\."), "[", 1)
+entrezIDs <- mapIds(org.Hs.eg.db, keys = ensemblIDs, column = "ENTREZID", 
+                    keytype = "ENSEMBL", multiVals = "first")
+```
+
+## Saving of preprocessed data
+
+```{r}
+ExportData <- t(logCPM)
+ExportData <- data.frame(SampleInfo, ExportData)
+saveRDS(ExportData, file = "GSE56787data_biopsy.rds")
+```
+
+
+# Statistical analysis
+
+## Moderated t-test by packages limma and MKomics
+
+```{r}
+library(limma)
+library(MKomics)
+res <- mod.t.test (x = logCPM, group = SampleInfo$group)
+colSums(res[,c(5,6)] < 0.05)
+# no results for adj. p value < 5%
+```
+
+
+# Used software
+
+```{r}
+sessionInfo()
+```

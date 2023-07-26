@@ -1,0 +1,222 @@
+---
+title: "Analysis of EGAD00001008337"
+author: "T. Schaetzl and M. Kohl"
+date: "May 2023"
+output:
+  rmarkdown::html_document:
+    theme: united
+    highlight: tango
+    toc: true
+---
+
+```{r setup, include=FALSE}
+## setup for the chunks
+knitr::opts_chunk$set(echo = TRUE, error = TRUE, warning = FALSE, message = FALSE)
+Sys.setlocale("LC_ALL", "English")
+```
+
+
+# Import of data
+
+```{r}
+SampleInfo <- read.csv("EGAD00001008337_SampleInfo.csv", na.strings = "N/A")
+SampleInfo
+cts <- read.delim(file='01_Data --- EGAS00001005782 --- RawCounts_Exprgenesonly.txt',row.names = 1)
+# Filtering has already been done
+cts <- as.matrix(cts)
+# Removing mosaic samples
+cts <- cts[,SampleInfo$Repeat_units != "Mosaic_2units"]
+SampleInfo <- SampleInfo[SampleInfo$Repeat_units != "Mosaic_2units",]
+#Removing asymptomatic samples
+cts <- cts[,SampleInfo$SampleID != "FSHD_15_VL"]
+SampleInfo <- SampleInfo[SampleInfo$SampleID != "FSHD_15_VL",]
+cts <- cts[,SampleInfo$SampleID != "FSHD_23_VL"]
+SampleInfo <- SampleInfo[SampleInfo$SampleID != "FSHD_23_VL",]
+sort(colSums(cts)/1e6)
+```
+
+
+# Quality control 
+
+## Boxplot 
+
+```{r}
+cts0 <- cts
+cts0[cts0 == 0] <- min(cts0[cts0 != 0])
+boxplot(cts0, log = "y", range = 0, las = 2)
+```
+
+## Similarity map
+
+```{r}
+library(MKomics)
+Cor <- cor(cts, method = "spearman")
+corPlot2(Cor, minCor = min(Cor), 
+         #labels = paste(SampleInfo$subject),
+         title = "Spearman correlation")
+```
+
+
+# Preprocessing
+
+```{r}
+library(limma)
+library(edgeR)
+dge <- DGEList(counts=cts)
+group <- SampleInfo$group
+logCPM <- cpm(dge, log=TRUE, prior.count=3)
+```
+
+
+# Quality control of preprocessed data
+
+## Boxplot
+
+```{r}
+boxplot(logCPM, range = 0, las = 2)
+```
+
+## Similarity map
+
+```{r}
+Cor <- cor(logCPM, method = "spearman")
+corPlot2(Cor, minCor = min(Cor), 
+         #labels=paste(SampleInfo$subject),
+         title = "Spearman correlation")
+```
+
+## Mean-SD plot
+
+```{r}
+library(vsn)
+meanSdPlot(logCPM)
+```
+
+## Loading annotation data
+
+```{r}
+library(org.Hs.eg.db)
+ensemblIDs <- rownames(logCPM)
+entrezIDs <- mapIds(org.Hs.eg.db, keys = ensemblIDs, column = "ENTREZID", 
+                    keytype = "ENSEMBL", multiVals = "first")
+symbols <- mapIds(org.Hs.eg.db, keys = ensemblIDs
+                  , column = "SYMBOL", 
+                    keytype = "ENSEMBL", multiVals = "first")
+```
+
+## Saving of preprocessed data
+
+```{r}
+ExportData <- t(logCPM)
+ExportData <- data.frame(SampleInfo, ExportData)
+saveRDS(ExportData, file = "EGAD00001008337data.rds")
+```
+
+
+# Statistical analysis
+
+## Moderated t-test by packages limma and MKomics
+
+```{r}
+library(limma)
+library(MKomics)
+res <- mod.t.test (x = logCPM, group = SampleInfo$group)
+colSums(res[,c(5,6)] < 0.05)
+# 7326 results for adj. p value < 5%
+```
+
+## Saving of results
+
+```{r}
+res.EGAD00001008337 <- as.data.frame(res)
+res.EGAD00001008337$ENSEMBLE <- ensemblIDs
+res.EGAD00001008337 <- res.EGAD00001008337[order(res.EGAD00001008337$adj.p.value),]
+write.csv(res.EGAD00001008337, file = "ResultsEGAD00001008337.csv", row.names = FALSE)
+save(res.EGAD00001008337, file = "Final_ResultsEGAD00001008337.RData")
+```
+
+## Heatmap 
+
+```{r}
+library(ComplexHeatmap)
+library(circlize)
+library(RColorBrewer)
+## Data selection
+sel <-res$adj.p.value < 0.05
+selData <- logCPM[sel,]
+selData <- selData - rowMeans(selData, na.rm = TRUE)
+colnames(selData) <- paste(SampleInfo$SampleID)
+## Color definition
+col1 <- rev(brewer.pal(n = 8, name = "RdYlBu"))
+col2 <- brewer.pal(n = 3, name = "Set1")[c(3,1)]
+col3 <- brewer.pal(n = 3, name = "Set2")[c(3,1)]
+col4 <- brewer.pal(n = 3, name = "Dark2")[c(2,4)]
+mycol <- colorRamp2(seq(-1, 1, length = 128), 
+                    colorRampPalette(col1)(128))
+## Annotation
+df <- data.frame(group = SampleInfo$group)
+ha <- HeatmapAnnotation(df = df,
+                        col = list(group = c("CTRL" = col2[1],
+                                              "FSHD" = col2[2])))
+## Drawing the heatmap
+Heatmap(selData, col = mycol, name = "log2-FC", show_row_names = FALSE,
+        use_raster = FALSE,
+        top_annotation = ha, show_column_names = TRUE,
+        column_names_gp = gpar(fontsize = 8),
+        clustering_distance_columns = "euclidean",
+        show_row_dend = TRUE, km = 1,
+        cluster_columns = TRUE, show_column_dend = TRUE,
+        column_title = "Adjusted p-value < 0.05",
+        show_heatmap_legend = TRUE)
+```
+
+
+# Enrichment analysis
+
+```{r}
+GeneID.UP <- entrezIDs[(res$`difference in means` > 0 & 
+                        res$adj.p.value < 0.05)]
+GeneID.DN <- entrezIDs[(res$`difference in means` < 0 & 
+                        res$adj.p.value < 0.05)]
+```
+
+## Calculation of enrichment for GO
+
+```{r}
+library(GO.db)
+go <- goana(list(Up = unique(GeneID.UP), 
+                 Down = unique(GeneID.DN)), 
+            universe = unique(entrezIDs), 
+            species = "Hs")
+go.up <- topGO(go, sort = "up", number = Inf)
+go.up[1:50,]
+go.dn <- topGO(go, sort = "down", number = Inf)
+go.dn[1:50,]
+```
+
+## Saving of GO results
+
+### Upregulated pathways
+
+```{r}
+go.up.EGAD00001008337 <- go.up
+go.up.EGAD00001008337 <- go.up.EGAD00001008337[order(go.up.EGAD00001008337$P.Up),]
+write.csv(go.up.EGAD00001008337, file = "GO.UP_EGAD00001008337.csv", row.names = FALSE)
+save(go.up.EGAD00001008337, file = "GO.UP_EGAD00001008337.RData")
+```
+
+### Downregulated pathways
+
+```{r}
+go.dn.EGAD00001008337 <- go.dn
+go.dn.EGAD00001008337 <- go.dn.EGAD00001008337[order(go.dn.EGAD00001008337$P.Down),]
+write.csv(go.dn.EGAD00001008337, file = "GO.DN_EGAD00001008337.csv", row.names = FALSE)
+save(go.dn.EGAD00001008337, file = "GO.DN_EGAD00001008337.RData")
+```
+
+
+# Used software
+
+```{r}
+sessionInfo()
+```
