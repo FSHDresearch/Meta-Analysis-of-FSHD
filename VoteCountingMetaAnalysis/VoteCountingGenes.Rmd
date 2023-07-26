@@ -1,0 +1,148 @@
+---
+title: "Vote-Counting Meta-Analysis"
+author: "T. Schätzl and M. Kohl"
+date: "December 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    theme: united
+    highlight: tango
+---
+
+## Load datasets with significant results
+
+```{r}
+load("ResultsEGAD00001008337.RData")
+load("ResultsGSE10760.RData")
+load("ResultsGSE115650.RData")
+load("ResultsGSE123468_Fam12.RData")
+load("ResultsGSE123468_Fam16.RData")
+load("ResultsGSE138768.RData")
+load("ResultsGSE26852.RData")
+## rename columns
+names(res.EGAD00001008337) <- paste0("EGA.", names(res.EGAD00001008337))
+names(res.GSE10760) <- paste0("GSE10760.", names(res.GSE10760))
+names(res.GSE115650) <- paste0("GSE115650.", names(res.GSE115650))
+names(res.GSE123468_12) <- paste0("GSE123468_12.", names(res.GSE123468_12))
+names(res.GSE123468_16) <- paste0("GSE123468_16.", names(res.GSE123468_16))
+names(res.GSE138768) <- paste0("GSE138768.", names(res.GSE138768))
+names(res.GSE26852_stir) <- paste0("GSE26852.", names(res.GSE26852_stir))
+```
+
+
+## Select significant genes
+
+```{r}
+## adj. p value < 0.05
+res.EGAD00001008337.sel <- res.EGAD00001008337[res.EGAD00001008337$EGA.adj.P.Val < 0.05,]
+res.GSE10760.sel <- res.GSE10760[res.GSE10760$GSE10760.adj.p.value < 0.05,]
+res.GSE115650.sel <- res.GSE115650[res.GSE115650$GSE115650.adj.P.Val < 0.05,]
+res.GSE123468_12.sel <- res.GSE123468_12[res.GSE123468_12$`GSE123468_12.group12: adj.P.Val` < 0.05,]
+res.GSE123468_16.sel <- res.GSE123468_16[res.GSE123468_16$`GSE123468_16.group16: adj.P.Val` < 0.05,]
+res.GSE138768.sel <- res.GSE138768[res.GSE138768$GSE138768.adj.P.Val < 0.05,]
+res.GSE26852.sel <- res.GSE26852_stir[res.GSE26852_stir$GSE26852.adj.p.value < 0.05,]
+```
+
+
+## Merge datasets
+
+```{r}
+dim(res.EGAD00001008337.sel)
+dim(res.GSE10760.sel)
+Daten.zs <- merge(res.EGAD00001008337.sel, res.GSE10760.sel, by.x = "EGA.ENSEMBLE",
+                  by.y = "GSE10760.ENSEMBL", all = TRUE)
+dim(res.GSE115650.sel)
+Daten.zs <- merge(Daten.zs, res.GSE115650.sel, by.x = "EGA.ENSEMBLE", 
+                  by.y = "GSE115650.ENSEMBLE", all = TRUE)
+dim(res.GSE123468_12.sel)
+Daten.zs <- merge(Daten.zs, res.GSE123468_12.sel, by.x = "EGA.ENSEMBLE", 
+                  by.y = "GSE123468_12.ENSEMBLE", all = TRUE)
+dim(res.GSE123468_16.sel)
+Daten.zs <- merge(Daten.zs, res.GSE123468_16.sel, by.x = "EGA.ENSEMBLE", 
+                  by.y = "GSE123468_16.ENSEMBLE", all = TRUE)
+dim(res.GSE138768.sel)
+Daten.zs <- merge(Daten.zs, res.GSE138768.sel, by.x = "EGA.ENSEMBLE", 
+                  by.y = "GSE138768.ENSEMBLE", all = TRUE)
+dim(res.GSE26852.sel)
+Daten.zs <- merge(Daten.zs, res.GSE26852.sel, by.x = "EGA.ENSEMBLE", 
+                  by.y = "GSE26852.ENSEMBL", all = TRUE)
+
+Daten.zs$Nr.signif.res <- rowSums(Daten.zs[,c("EGA.adj.P.Val", 
+                                              "GSE10760.adj.p.value",
+                                              "GSE115650.adj.P.Val",
+                                              "GSE123468_12.group12: adj.P.Val",
+                                              "GSE123468_16.group16: adj.P.Val",
+                                              "GSE138768.adj.P.Val",
+                                              "GSE26852.adj.p.value")] < 0.05,
+                                  na.rm = TRUE)
+Daten.zs <- Daten.zs[order(Daten.zs$Nr.signif.res, decreasing = TRUE),]
+
+Daten.zs.sel <- Daten.zs[,c("EGA.ENSEMBLE", "GSE26852.SYMBOL", "Nr.signif.res")]
+Daten.zs.sel <- Daten.zs.sel[!duplicated(Daten.zs.sel),]
+## No ENSEMBL ID
+sum(is.na(Daten.zs.sel$EGA.ENSEMBLE))
+Daten.zs.sel[is.na(Daten.zs.sel$EGA.ENSEMBLE),]
+## remove data without ENSEMBL ID
+Daten.zs.sel <- Daten.zs.sel[!is.na(Daten.zs.sel$EGA.ENSEMBLE),]
+head(Daten.zs.sel, n = 20)
+```
+
+
+## Get annotation information
+
+```{r}
+library(AnnotationHub)
+ah <- AnnotationHub()
+query(ah, "EnsDb")
+ahDb <- query(ah, pattern = c("Homo sapiens", "EnsDb", 107))
+ahEdb <- ahDb[[1]]
+gns <- genes(ahEdb)
+str(gns)
+gnsIDs <- gns@elementMetadata@listData
+Daten.zs.sel$gene_name <- ""
+for(i in 1:nrow(Daten.zs.sel)){
+  sel <- which(gnsIDs$gene_id == Daten.zs.sel$EGA.ENSEMBLE[i])
+  if(length(sel) == 0){
+    print(gnsIDs$gene_name[sel])
+    print(Daten.zs.sel$EGA.ENSEMBLE[i])
+  }
+  if(length(sel) > 1){
+    print(gnsIDs$gene_name[sel])
+    print(Daten.zs.sel$EGA.ENSEMBLE[i])
+  }
+  Daten.zs.sel$gene_name[i] <- gnsIDs$gene_name[sel[1]]
+}
+```
+   
+
+## Vote-counting   
+ 
+```{r}
+## ENSEMBLE IDs with 7 sig. results
+Daten.zs.sel[Daten.zs.sel$Nr.signif.res == 7,]
+
+## ENSEMBLE IDs with at least 6 sig. results
+Daten.zs.sel[Daten.zs.sel$Nr.signif.res >= 6,]
+
+## ENSEMBLE IDs with at least 5 sig. results
+Daten.zs.sel[Daten.zs.sel$Nr.signif.res >= 5,]
+
+## ENSEMBLE IDs with at least 4 sig. results
+Daten.zs.sel[Daten.zs.sel$Nr.signif.res >= 4,]
+```
+
+
+## Export results
+
+```{r}
+library(openxlsx)
+write.xlsx(Daten.zs, file = "Results_all.xlsx")
+write.xlsx(Daten.zs.sel, file = "Results_sel.xlsx")
+```
+
+
+## Software information
+
+```{r}
+sessionInfo()
+```

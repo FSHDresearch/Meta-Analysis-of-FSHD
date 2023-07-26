@@ -1,0 +1,193 @@
+---
+title: "Vote-Counting Meta-Analysis of GO Terms"
+author: "T. Schätzl and M. Kohl"
+date: "December 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    theme: united
+    highlight: tango
+---
+
+## Load datasets with significant results
+
+```{r}
+load("ResultsEGAD00001008337.RData")
+load("ResultsGSE10760.RData")
+load("ResultsGSE115650.RData")
+load("ResultsGSE123468_Fam12.RData")
+load("ResultsGSE123468_Fam16.RData")
+load("ResultsGSE138768.RData")
+load("ResultsGSE26852.RData")
+## rename columns
+names(res.EGAD00001008337) <- paste0("EGA.", names(res.EGAD00001008337))
+names(res.GSE10760) <- paste0("GSE10760.", names(res.GSE10760))
+names(res.GSE115650) <- paste0("GSE115650.", names(res.GSE115650))
+names(res.GSE123468_12) <- paste0("GSE123468_12.", names(res.GSE123468_12))
+names(res.GSE123468_16) <- paste0("GSE123468_16.", names(res.GSE123468_16))
+names(res.GSE138768) <- paste0("GSE138768.", names(res.GSE138768))
+names(res.GSE26852_stir) <- paste0("GSE26852.", names(res.GSE26852_stir))
+```
+
+
+## Select significant genes
+
+### GO down
+
+```{r}
+go.dn.EGAD00001008337.sel <- go.dn.EGAD00001008337[go.dn.EGAD00001008337$EGA.P.Down < 0.05,]
+go.dn.GSE10760.sel <- go.dn.GSE10760[go.dn.GSE10760$GSE10760.P.Down < 0.05,]
+go.dn.GSE115650.sel <- go.dn.GSE115650[go.dn.GSE115650$GSE115650.P.Down < 0.05,]
+go.dn.GSE123468_12.sel <- go.dn.GSE123468_12[go.dn.GSE123468_12$GSE123468_12.P.Down < 0.05,]
+go.dn.GSE123468_16.sel <- go.dn.GSE123468_16[go.dn.GSE123468_16$GSE123468_16.P.Down < 0.05,]
+go.dn.GSE138768.sel <- go.dn.GSE138768[go.dn.GSE138768$GSE138768.P.Down < 0.05,]
+go.dn.GSE26852.sel <- go.dn.GSE26852_stir[go.dn.GSE26852_stir$GSE26852.P.Down < 0.05,]
+```
+
+
+### GO up
+
+```{r}
+go.up.EGAD00001008337.sel <- go.up.EGAD00001008337[go.up.EGAD00001008337$EGA.P.Up < 0.05,]
+go.up.GSE10760.sel <- go.up.GSE10760[go.up.GSE10760$GSE10760.P.Up < 0.05,]
+go.up.GSE115650.sel <- go.up.GSE115650[go.up.GSE115650$GSE115650.P.Up < 0.05,]
+go.up.GSE123468_12.sel <- go.up.GSE123468_12[go.up.GSE123468_12$GSE123468_12.P.Up < 0.05,]
+go.up.GSE123468_16.sel <- go.up.GSE123468_16[go.up.GSE123468_16$GSE123468_16.P.Up < 0.05,]
+go.up.GSE138768.sel <- go.up.GSE138768[go.up.GSE138768$GSE138768.P.Up < 0.05,]
+go.up.GSE26852.sel <- go.up.GSE26852_stir[go.up.GSE26852_stir$GSE26852.P.Up < 0.05,]
+```
+
+## Merge datasets
+
+### GO down
+
+```{r}
+dim(go.dn.EGAD00001008337.sel)
+dim(go.dn.GSE10760.sel)
+Daten.go.dn <- merge(go.dn.EGAD00001008337.sel, go.dn.GSE10760.sel, by.x = "EGA.Term",
+                  by.y = "GSE10760.Term", all = TRUE)
+dim(go.dn.GSE115650.sel)
+Daten.go.dn <- merge(Daten.go.dn, go.dn.GSE115650.sel, by.x = "EGA.Term", 
+                  by.y = "GSE115650.Term", all = TRUE)
+dim(go.dn.GSE123468_12.sel)
+Daten.go.dn <- merge(Daten.go.dn, go.dn.GSE123468_12.sel, by.x = "EGA.Term", 
+                  by.y = "GSE123468_12.Term", all = TRUE)
+dim(go.dn.GSE123468_16.sel)
+Daten.go.dn <- merge(Daten.go.dn, go.dn.GSE123468_16.sel, by.x = "EGA.Term", 
+                  by.y = "GSE123468_16.Term", all = TRUE)
+dim(go.dn.GSE138768.sel)
+Daten.go.dn <- merge(Daten.go.dn, go.dn.GSE138768.sel, by.x = "EGA.Term", 
+                  by.y = "GSE138768.Term", all = TRUE)
+dim(go.dn.GSE26852.sel)
+Daten.go.dn <- merge(Daten.go.dn, go.dn.GSE26852.sel, by.x = "EGA.Term", 
+                  by.y = "GSE26852.Term", all = TRUE)
+
+Daten.go.dn$Nr.signif.go.dn <- rowSums(Daten.go.dn[,c("EGA.P.Down", 
+                                                      "GSE10760.P.Down",
+                                                      "GSE115650.P.Down",
+                                                      "GSE123468_12.P.Down",
+                                                      "GSE123468_16.P.Down",
+                                                      "GSE138768.P.Down",
+                                                      "GSE26852.P.Down")] < 0.05,
+                                  na.rm = TRUE)
+Daten.go.dn <- Daten.go.dn[order(Daten.go.dn$Nr.signif.go.dn, decreasing = TRUE),]
+Daten.go.dn.sel <- Daten.go.dn[,c("EGA.Term", "Nr.signif.go.dn")]
+Daten.go.dn.sel <- Daten.go.dn.sel[!duplicated(Daten.go.dn.sel),]
+## No GO term
+sum(is.na(Daten.go.dn.sel$EGA.Term))
+Daten.go.dn.sel[is.na(Daten.go.dn.sel$EGA.Term),]
+## remove data without GO term
+Daten.go.dn.sel <- Daten.go.dn.sel[!is.na(Daten.go.dn.sel$EGA.Term),]
+head(Daten.go.dn.sel, n = 20)
+```
+
+
+### GO up
+
+```{r}
+dim(go.up.EGAD00001008337.sel)
+dim(go.up.GSE10760.sel)
+Daten.go.up <- merge(go.up.EGAD00001008337.sel, go.up.GSE10760.sel, by.x = "EGA.Term",
+                  by.y = "GSE10760.Term", all = TRUE)
+dim(go.up.GSE115650.sel)
+Daten.go.up <- merge(Daten.go.up, go.up.GSE115650.sel, by.x = "EGA.Term", 
+                  by.y = "GSE115650.Term", all = TRUE)
+dim(go.up.GSE123468_12.sel)
+Daten.go.up <- merge(Daten.go.up, go.up.GSE123468_12.sel, by.x = "EGA.Term", 
+                  by.y = "GSE123468_12.Term", all = TRUE)
+dim(go.up.GSE123468_16.sel)
+Daten.go.up <- merge(Daten.go.up, go.up.GSE123468_16.sel, by.x = "EGA.Term", 
+                  by.y = "GSE123468_16.Term", all = TRUE)
+dim(go.up.GSE138768.sel)
+Daten.go.up <- merge(Daten.go.up, go.up.GSE138768.sel, by.x = "EGA.Term", 
+                  by.y = "GSE138768.Term", all = TRUE)
+dim(go.up.GSE26852.sel)
+Daten.go.up <- merge(Daten.go.up, go.up.GSE26852.sel, by.x = "EGA.Term", 
+                  by.y = "GSE26852.Term", all = TRUE)
+
+Daten.go.up$Nr.signif.go.up <- rowSums(Daten.go.up[,c("EGA.P.Up", 
+                                              "GSE10760.P.Up",
+                                              "GSE115650.P.Up",
+                                              "GSE123468_12.P.Up",
+                                              "GSE123468_16.P.Up",
+                                              "GSE138768.P.Up",
+                                              "GSE26852.P.Up")] < 0.05,
+                                  na.rm = TRUE)
+Daten.go.up <- Daten.go.up[order(Daten.go.up$Nr.signif.go.up, decreasing = TRUE),]
+Daten.go.up.sel <- Daten.go.up[,c("EGA.Term", "Nr.signif.go.up")]
+Daten.go.up.sel <- Daten.go.up.sel[!duplicated(Daten.go.up.sel),]
+## No GO term
+sum(is.na(Daten.go.up.sel$EGA.Term))
+Daten.go.up.sel[is.na(Daten.go.up.sel$EGA.Term),]
+## remove data without GO term
+Daten.go.up.sel <- Daten.go.up.sel[!is.na(Daten.go.up.sel$EGA.Term),]
+head(Daten.go.up.sel, n = 20)
+```
+
+
+## Vote-counting
+
+### GO down
+
+```{r}
+## GO terms with 7 sig. results
+Daten.go.dn.sel[Daten.go.dn.sel$Nr.signif.go.dn == 7,]
+## GO terms with at least 6 sig. results
+Daten.go.dn.sel[Daten.go.dn.sel$Nr.signif.go.dn >= 6,]
+## GO terms with at least 5 sig. results
+Daten.go.dn.sel[Daten.go.dn.sel$Nr.signif.go.dn >= 5,]
+## GO terms with at least 4 sig. results
+Daten.go.dn.sel[Daten.go.dn.sel$Nr.signif.go.dn >= 4,]
+```
+
+
+## GO up
+
+```{r}
+## GO terms with 7 sig. results
+Daten.go.up.sel[Daten.go.up.sel$Nr.signif.go.up >= 7,]
+## GO terms with at least 6 sig. results
+Daten.go.up.sel[Daten.go.up.sel$Nr.signif.go.up >= 6,]
+## GO terms with at least 5 sig. results
+Daten.go.up.sel[Daten.go.up.sel$Nr.signif.go.up >= 5,]
+## GO terms with at least 4 sig. results
+Daten.go.up.sel[Daten.go.up.sel$Nr.signif.go.up >= 4,]
+```
+
+
+## Export results
+
+```{r}
+library(openxlsx)
+write.xlsx(Daten.go.dn, file = "Results_GO_down.xlsx")
+write.xlsx(Daten.go.dn.sel, file = "Results_GO_down_sel.xlsx")
+write.xlsx(Daten.go.up, file = "Results_GO_up.xlsx")
+write.xlsx(Daten.go.up.sel, file = "Results_GO_up_sel.xlsx")
+```
+
+
+## Software information
+
+```{r}
+sessionInfo()
+```
