@@ -13,17 +13,17 @@ Folder contents:
 
 - Preparations
 
-  -> SingleDatasetsAnalyses
+  Subfolder: SingleDatasetsAnalyses
   
      Rmd scripts to analyse single datasets
      
   
-  -> SingleDatasetsSummaries
+  Subfolder: SingleDatasetsSummaries
   
      Rmd scripts to summarize (mean, SD, sample size) single datasets
      
   
-  -> sampleInfos
+  Subfolder: sampleInfos
   
      csv files with information about samples of single datasets
 
