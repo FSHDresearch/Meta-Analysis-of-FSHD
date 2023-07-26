@@ -8,9 +8,13 @@ The repository includes analysis files used for our study
 Folder contents:
 
 - Preparations
+
   -> SingleDatasetsAnalysis
+  
   -> SingleDatasetsSummaries
+  
   -> sampleInfos
+
 
 - RandomEffectsMetaAnalysis
   Script including random-effects meta-analysis
