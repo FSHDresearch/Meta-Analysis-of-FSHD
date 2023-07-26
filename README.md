@@ -30,5 +30,9 @@ Folder contents:
 
 - RandomEffectsMetaAnalysis
 
-    Rmd script including random-effects meta-analysis
+    Rmd script for random-effects meta-analysis
 
+
+- VoteCountingMetaAnalysis
+
+    Rmd scripts for vote-counting meta-analses
