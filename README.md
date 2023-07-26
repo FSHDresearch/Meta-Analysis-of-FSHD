@@ -17,4 +17,5 @@ Folder contents:
 
 
 - RandomEffectsMetaAnalysis
-  Script including random-effects meta-analysis
+
+  Rmd script including random-effects meta-analysis
