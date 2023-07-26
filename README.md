@@ -15,9 +15,17 @@ Folder contents:
 
   -> SingleDatasetsAnalysis
   
+     Rmd scripts to analyse single datasets
+     
+  
   -> SingleDatasetsSummaries
   
+     Rmd scripts to summarize (mean, SD, sample size) single datasets
+     
+  
   -> sampleInfos
+  
+     csv files with information about samples of single datasets
 
 
 - RandomEffectsMetaAnalysis
