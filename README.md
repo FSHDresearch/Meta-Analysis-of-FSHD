@@ -13,21 +13,22 @@ Folder contents:
 
 - Preparations
 
-  Subfolder: SingleDatasetsAnalyses
+    Subfolder: SingleDatasetsAnalyses
   
-     Rmd scripts to analyse single datasets
+        Rmd scripts to analyse single datasets
      
   
-  Subfolder: SingleDatasetsSummaries
+    Subfolder: SingleDatasetsSummaries
   
-     Rmd scripts to summarize (mean, SD, sample size) single datasets
+        Rmd scripts to summarize (mean, SD, sample size) single datasets
      
   
-  Subfolder: sampleInfos
+    Subfolder: sampleInfos
   
-     csv files with information about samples of single datasets
+        csv files with information about samples of single datasets
 
 
 - RandomEffectsMetaAnalysis
 
-  Rmd script including random-effects meta-analysis
+    Rmd script including random-effects meta-analysis
+
