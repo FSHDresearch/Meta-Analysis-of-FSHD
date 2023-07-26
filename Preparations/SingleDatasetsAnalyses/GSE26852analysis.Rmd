@@ -1,0 +1,235 @@
+---
+title: "Analysis of GSE26852"
+author: "T. Schätzl and M. Kohl"
+date: "May 2023"
+output:
+  rmarkdown::html_document:
+    toc: true
+    number_sections: true
+    theme: united
+    highlight: tango
+---
+
+
+```{r setup, include=FALSE}
+## setup für die Chunks
+knitr::opts_chunk$set(echo = TRUE, error = TRUE, warning = FALSE, message = FALSE)
+Sys.setlocale("LC_ALL", "English")
+```
+
+
+# Import of data
+
+The data are included in dataset GSE26852 of Gene Expression Omnibus:
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE26852
+
+The tar-file was unzipped into a subfolder called GSE26852_RAW. 
+We removed all files containing data about inflammatory myopathies (n=7) and dysferlinopathies (n=4).
+
+We import the data from the probe profiles using Bioconductor packages lumi and beadarray.
+
+```{r}
+library(lumi)
+Ilu.Daten <- lumiR(fileName = "GSE26852_non-normalized.txt")
+Ilu.Daten <- Ilu.Daten[,1:15]
+Ilu.Daten
+SampleInfo <- read.csv(file = "GSE26852_SampleInfo.csv", na.strings = "N/A")
+SampleInfo
+## Removing of STIR- samples
+Ilu.Daten <- Ilu.Daten[,SampleInfo$disease_state != "T2-STIR-"]
+SampleInfo <- SampleInfo[SampleInfo$disease_state != "T2-STIR-",]
+ProbeID <- read.delim(file = "GSE26852_non-normalized.txt", skip = 1)$X
+library(beadarray)
+Ilu.Daten2 <- readBeadSummaryData(dataFile = "GSE26852_non-normalized.txt", 
+                                  skip = 1, ProbeID = "ProbeID")
+Ilu.Daten2 <- Ilu.Daten2[,1:15]
+Ilu.Daten2
+## Removing of STIR- samples
+Ilu.Daten2 <- Ilu.Daten[,SampleInfo$disease_state != "T2-STIR-"]
+SampleInfo <- SampleInfo[SampleInfo$disease_state != "T2-STIR-",]
+```
+
+
+# Quality control
+
+## QC report of package arrayQualityMetrics
+
+```{r, eval=FALSE} 
+library(arrayQualityMetrics)
+arrayQualityMetrics(Ilu.Daten2, outdir = "QC", force = TRUE,
+                    do.logtransform = TRUE)
+```
+
+## Similarity map
+
+```{r}
+library(MKomics)
+COR <- cor(exprs(Ilu.Daten), method = "spearman")
+corPlot2(COR, minCor = min(COR), labels = pData(Ilu.Daten)[,1], 
+        title = "Spearman correlation")
+```
+
+
+# Preprocessing
+
+We use RSN to preprocess the data.
+
+```{r}
+Ilu.rsn <- rsn(lumiT(Ilu.Daten, method = "log2"))
+```
+
+
+# Quality control of preprocessed data
+
+## Mean-SD plot
+
+```{r}
+library(vsn)
+meanSdPlot(Ilu.rsn)
+```
+
+## Boxplot 
+
+```{r}
+boxplot(Ilu.rsn, main = "rsn")
+```
+
+## Similarity map
+
+```{r}
+COR.rsn <- cor(exprs(Ilu.rsn))
+corPlot2(COR.rsn, minCor = min(COR), title = "Spearman correlation")
+```
+
+## Saving of preprocessed data
+
+```{r}
+ExportData <- t(exprs(Ilu.rsn))
+ExportData <- data.frame(SampleInfo, ExportData)
+saveRDS(ExportData, file = "GSE26852data.rds")
+```
+
+
+# Statistical analysis
+
+## Moderated t-test by packages limma and MKomics
+
+```{r}
+library(limma)
+library(MKomics)
+res <- mod.t.test(x = exprs(Ilu.rsn), group = SampleInfo$group)
+colSums(res[,c(5,6)] < 0.05)
+# 3489 results for adj. p value < 5%
+```
+
+## Results
+
+### Loading annotation data
+
+```{r}
+library(org.Hs.eg.db)
+library(illuminaHumanv3.db)
+GeneID <- select(illuminaHumanv3.db, keys = keys(illuminaHumanv3.db),
+                 columns = c("ENSEMBL", "ENTREZID", "SYMBOL"))
+```
+
+### Saving of results
+
+```{r}
+res.GSE26852 <- as.data.frame(res)
+res.GSE26852$PROBEID <- ProbeID
+res.GSE26852 <- merge(res.GSE26852, GeneID, by = "PROBEID", all.x = TRUE)
+res.GSE26852 <- res.GSE26852[order(res.GSE26852$adj.p.value),]
+write.csv(res.GSE26852, file = "ResultsGSE26852.csv", row.names = FALSE)
+save(res.GSE26852, file = "ResultsGSE26852.RData")
+```
+
+## Heatmap 
+
+```{r}
+library(ComplexHeatmap)
+library(circlize)
+library(RColorBrewer)
+## Data selection
+sel <- res$adj.p.value < 0.05 
+selData <- exprs(Ilu.rsn)[sel,]
+selData <- selData - rowMeans(selData, na.rm = TRUE)
+colnames(selData) <- as.character(SampleInfo$group)
+## Setting colors
+col1 <- rev(brewer.pal(n = 8, name = "RdYlBu"))
+col2 <- brewer.pal(n = 3, name = "Set1")[c(3,1)]
+mycol <- colorRamp2(seq(-2, 2, length = 128), colorRampPalette(col1)(128))
+## Annotation
+df <- data.frame(group = SampleInfo$group)
+ha <- HeatmapAnnotation(df = df,
+                        col = list(group = c("control" = col2[1],
+                                             "FSHD" = col2[2])))
+## Drawing the Heatmap
+Heatmap(selData, col = mycol, name = "log2-FC", show_row_names = FALSE,
+        use_raster = FALSE,
+        top_annotation = ha, show_column_names = TRUE,
+        column_names_gp = gpar(fontsize = 8),
+        clustering_distance_columns = "pearson",
+        show_row_dend = TRUE, cluster_rows = TRUE,
+        cluster_columns = TRUE, show_column_dend = TRUE,
+        column_title = "Adjusted p-value < 0.05",
+        show_heatmap_legend = TRUE)
+```
+
+
+# Enrichment analysis
+
+```{r}
+library(org.Hs.eg.db)
+library(illuminaHumanv3.db)
+GeneID <- select(illuminaHumanv3.db, keys = keys(illuminaHumanv3.db), 
+                 columns = "ENTREZID")
+keys.UP <- ProbeID[(res$`difference in means` > 0 & 
+                                   res$p.value < 0.05)]
+keys.DN <- ProbeID[(res$`difference in means` < 0 & 
+                                   res$p.value < 0.05)]
+GeneID.UP <- select(illuminaHumanv3.db, keys = keys.UP, columns = "ENTREZID")
+GeneID.DN <- select(illuminaHumanv3.db, keys = keys.DN, columns = "ENTREZID")
+```
+
+## Calculation of enrichment for GO
+
+```{r}
+library(limma)
+go <- goana(list(Up = unique(GeneID.UP$ENTREZID), 
+                 Down = unique(GeneID.DN$ENTREZID)), 
+            universe = unique(GeneID$ENTREZID), 
+            species = "Hs")
+go.up <- topGO(go, sort = "up", number = Inf)
+go.up[1:50,]
+go.dn <- topGO(go, sort = "down", number = Inf)
+go.dn[1:50,]
+```
+
+## Saving of GO results
+
+### Upregulated pathways
+
+```{r}
+go.up.GSE26852 <- go.up
+go.up.GSE26852 <- go.up.GSE26852[order(go.up.GSE26852$P.Up),]
+write.csv(go.up.GSE26852, file = "GO.UP_GSE26852.csv", row.names = FALSE)
+save(go.up.GSE26852, file = "GO.UP_GSE26852.RData")
+```
+
+### Downregulated pathways
+
+```{r}
+go.dn.GSE26852 <- go.dn
+go.dn.GSE26852 <- go.dn.GSE26852[order(go.dn.GSE26852$P.Down),]
+write.csv(go.dn.GSE26852, file = "GO.DN_GSE26852.csv", row.names = FALSE)
+save(go.dn.GSE26852, file = "GO.DN_GSE26852.RData")
+```
+
+
+# Used software
+
+```{r}
+sessionInfo()
+```
+

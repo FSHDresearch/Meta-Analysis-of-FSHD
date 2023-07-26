@@ -1,0 +1,221 @@
+---
+title: "Analysis of GSE56787 celllines"
+author: "T. Schaetzl and M. Kohl"
+date: "May 2023"
+output:
+  rmarkdown::html_document:
+    theme: united
+    highlight: tango
+    toc: true
+---
+
+```{r setup, include=FALSE}
+## setup for the chunks
+knitr::opts_chunk$set(echo = TRUE, error = TRUE, warning = FALSE, message = FALSE)
+Sys.setlocale("LC_ALL", "English")
+```
+
+
+# Import of Salmon quantification data
+
+```{r}
+SampleInfo <- read.csv("GSE56787_SampleInfo.csv", na.strings = "N/A")
+SampleInfo
+txi <- readRDS(file = "SRP043221.rds")
+cts <- txi$counts
+cts <- cts[,order(colnames(cts))]
+cts <- cts[,SampleInfo$Experiment_type=='cell_lines']
+SampleInfo <- SampleInfo[SampleInfo$Experiment_type=='cell_lines',]
+sort(colSums(cts)/1e6)
+```
+
+
+# Quality control 
+
+## Boxplot 
+
+```{r}
+cts0 <- cts
+cts0[cts0 == 0] <- min(cts0[cts0 != 0])
+boxplot(cts0, log = "y", range = 0, las = 2)
+```
+
+## Similarity map
+
+```{r}
+library(MKomics)
+Cor <- cor(cts, method = "spearman")
+corPlot2(Cor, minCor = min(Cor), 
+         labels = paste(SampleInfo$SRR),
+         title = "Spearman correlation")
+```
+
+
+# Preprocessing
+
+```{r}
+library(limma)
+library(edgeR)
+dge <- DGEList(counts=cts)
+group <- SampleInfo$group
+design <- model.matrix(~ group)
+keep <- filterByExpr(dge, design)
+dge <- dge[keep,,keep.lib.sizes=FALSE]
+dge <- calcNormFactors(dge)
+logCPM <- cpm(dge, log=TRUE, prior.count=3)
+```
+
+
+# Quality control of preprocessed data
+
+## Boxplot
+
+```{r}
+boxplot(logCPM, range = 0, las = 2)
+```
+
+## Similarity map
+
+```{r}
+Cor <- cor(logCPM, method = "spearman")
+corPlot2(Cor, minCor = min(Cor), 
+         labels=paste(SampleInfo$SRR),
+         title = "Spearman correlation")
+```
+
+## Mean-SD plot
+
+```{r}
+library(vsn)
+meanSdPlot(logCPM)
+```
+
+## Loading annotation data
+
+```{r}
+library(org.Hs.eg.db)
+symbols <- sapply(strsplit(rownames(logCPM), "\\|"), "[", 6)
+ensemblIDs <- sapply(strsplit(rownames(logCPM), "\\|"), "[", 2)
+ensemblIDs <- sapply(strsplit(ensemblIDs, "\\."), "[", 1)
+entrezIDs <- mapIds(org.Hs.eg.db, keys = ensemblIDs, column = "ENTREZID", 
+                    keytype = "ENSEMBL", multiVals = "first")
+```
+
+## Saving of preprocessed data
+
+```{r}
+ExportData <- t(logCPM)
+ExportData <- data.frame(SampleInfo, ExportData)
+saveRDS(ExportData, file = "GSE56787data_celllines.rds")
+```
+
+
+# Statistical analysis
+
+## Moderated t-test by packages limma and MKomics
+
+```{r}
+library(limma)
+library(MKomics)
+res <- mod.t.test (x = logCPM, group = SampleInfo$group)
+colSums(res[,c(5,6)] < 0.05)
+# 25 results for adj. p value < 5%
+```
+
+## Saving of results
+
+```{r}
+res.GSE56787celllines <- as.data.frame(res)
+res.GSE56787celllines$ENSEMBLE <- ensemblIDs
+res.GSE56787celllines <- res.GSE56787celllines[order(res.GSE56787celllines$adj.p.value),]
+write.csv(res.GSE56787celllines, file = "ResultsGSE56787celllines.csv", row.names = FALSE)
+save(res.GSE56787celllines, file = "ResultsGSE56787celllines.RData")
+```
+
+## Heatmap 
+
+```{r}
+library(ComplexHeatmap)
+library(circlize)
+library(RColorBrewer)
+## Data selection
+sel <- res$adj.p.value < 0.05
+selData <- logCPM[sel,]
+selData <- selData - rowMeans(selData, na.rm = TRUE)
+colnames(selData) <- paste(SampleInfo$subject)
+## Color definition
+col1 <- rev(brewer.pal(n = 8, name = "RdYlBu"))
+col2 <- brewer.pal(n = 3, name = "Set1")[c(3,1)]
+col3 <- brewer.pal(n = 3, name = "Set2")[c(3,1)]
+col4 <- brewer.pal(n = 3, name = "Dark2")[c(2,4)]
+mycol <- colorRamp2(seq(-2, 2, length = 128), 
+                    colorRampPalette(col1)(128))
+## Annotation
+df <- data.frame(group = SampleInfo$group)
+ha <- HeatmapAnnotation(df = df,
+                        col = list(group = c("control" = col2[1],
+                                              "FSHD" = col2[2])))
+## Drawing the heatmap
+Heatmap(selData, col = mycol, name = "log2-FC", show_row_names = FALSE,
+        use_raster = FALSE,
+        top_annotation = ha, show_column_names = TRUE,
+        column_names_gp = gpar(fontsize = 8),
+        clustering_distance_columns = "euclidean",
+        clustering_distance_rows = "euclidean",
+        show_row_dend = TRUE,
+        cluster_columns = TRUE, show_column_dend = TRUE,
+        column_title = "p value < 0.05 and |log2-FC| > log2(1.5)",
+        show_heatmap_legend = TRUE)
+```
+
+
+# Enrichment analysis
+
+```{r}
+GeneID.UP <- entrezIDs[(res$`difference in means` > 0 & 
+                        res$adj.p.value < 0.05)]
+GeneID.DN <- entrezIDs[(res$`difference in means` < 0 & 
+                        res$adj.p.value < 0.05)]
+```
+
+## Calculation of enrichment for GO
+
+```{r}
+library(GO.db)
+go <- goana(list(Up = unique(GeneID.UP), 
+                 Down = unique(GeneID.DN)), 
+            universe = unique(entrezIDs), 
+            species = "Hs")
+go.up <- topGO(go, sort = "up", number = Inf)
+go.up[1:50,]
+go.dn <- topGO(go, sort = "down", number = Inf)
+go.dn[1:50,]
+```
+
+## Saving of GO results
+
+### Upregulated pathways
+
+```{r}
+go.up.GSE115650 <- go.up
+go.up.GSE115650 <- go.up.GSE115650[order(go.up.GSE115650$P.Up),]
+write.csv(go.up.GSE115650, file = "GO.UP_GSE115650.csv", row.names = FALSE)
+save(go.up.GSE115650, file = "GO.UP_GSE115650.RData")
+```
+
+### Downregulated pathways
+
+```{r}
+go.dn.GSE115650 <- go.dn
+go.dn.GSE115650 <- go.dn.GSE115650[order(go.dn.GSE115650$P.Down),]
+write.csv(go.dn.GSE115650, file = "GO.DN_GSE115650.csv", row.names = FALSE)
+save(go.dn.GSE115650, file = "GO.DN_GSE115650.RData")
+```
+
+
+# Used software
+
+```{r}
+sessionInfo()
+```
+
