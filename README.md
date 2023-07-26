@@ -1,4 +1,6 @@
-# Meta-Analysis of FSHD
+# FSHD Meta-Analysis
+
+<img src="https://github.com/FSHDresearch/Meta-Analysis-of-FSHD/blob/11dec0050c7a172146e99de3cc6e630df42f7939/FSHD_MA_summary.png" alt="MKomics" width="120"/>
 
 The repository includes analysis files used for our study
 
