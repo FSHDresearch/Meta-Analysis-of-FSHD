@@ -1,0 +1,16 @@
+group,no.,subject,tissue,disease_state,age, sex,expression
+control,GSM661123,individual1,deltoid,healthy,N/A,M,-
+control,GSM661124,individual2,deltoid,healthy,N/A,M,-
+control,GSM661125,individual3,quadriceps,healthy,N/A,M,-
+control,GSM661126,individual4,deltoid,healthy,N/A,M,-
+control,GSM661127,individual5,quadriceps,healthy,N/A,F,-
+control,GSM661128,individual6,quadriceps,healthy,N/A,M,-
+control,GSM661130,individual7,quadriceps,healthy,N/A,F,-
+FSHD,GSM661131,individual8,quadriceps,T2-STIR-,31,M,-
+FSHD,GSM661132,individual9,quadriceps,T2-STIR-,N/A,M,-
+FSHD,GSM661134,individual10,quadriceps,T2-STIR-,N/A,F,-
+FSHD,GSM661135,individual11,quadriceps,T2-STIR-,N/A,M,-
+FSHD,GSM661137,individual8,paravertebral,T2-STIR+,31,M,+
+FSHD,GSM661138,individual12,biceps femoris,T2-STIR+,N/A,M,+
+FSHD,GSM661139,individual13,quadriceps,T2-STIR+,N/A,F,+
+FSHD,GSM661141,individual14,biceps femoris,T2-STIR+,N/A,F,+
