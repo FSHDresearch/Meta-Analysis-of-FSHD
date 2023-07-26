@@ -13,11 +13,6 @@ Folder contents:
 
 - Preparations
 
-    Subfolder: RNAseq
-  
-        bash scripts to download, prepare and quantify RNA-Seq datasets
-
-
     Subfolder: SingleDatasetsAnalyses
   
         Rmd scripts to analyse single datasets
