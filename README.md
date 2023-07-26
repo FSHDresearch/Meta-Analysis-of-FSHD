@@ -13,7 +13,7 @@ Folder contents:
 
 - Preparations
 
-  -> SingleDatasetsAnalysis
+  -> SingleDatasetsAnalyses
   
      Rmd scripts to analyse single datasets
      
