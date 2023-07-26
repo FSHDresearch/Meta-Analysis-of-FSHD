@@ -1,0 +1,88 @@
+---
+title: "Summary of GSE123468 for Meta-Analysis"
+author: "T. Schaetzl and M. Kohl"
+date: "December 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    theme: united
+    highlight: tango
+---
+
+
+## Import preprocessed data
+
+```{r}
+exportData <- readRDS(file = "../rds/GSE123468data.rds")
+logCPM <- t(exportData[,13:ncol(exportData)])
+```
+
+
+## Extract ENSEMBL IDs
+
+```{r}
+ensemblIDs <- sapply(strsplit(rownames(logCPM), "\\."), "[", 3)
+```
+
+
+## Calculate mean of replicated ENSEMBL IDs
+
+```{r}
+IDs <- unique(ensemblIDs)
+logCPM2 <- matrix(0,ncol = ncol(logCPM), nrow = length(IDs))
+for(i in 1:length(IDs)){
+  logCPM2[i,] <- colMeans(logCPM[ensemblIDs==IDs[i],, drop = FALSE], na.rm = TRUE)
+}
+rownames(logCPM2) <- IDs
+```
+
+
+## Determine sample size, mean, and SD per group
+
+```{r}
+library(MKomics)
+group <- exportData$group
+family <- exportData$family
+
+## family 12
+group12 <- group[family == "12"]
+res12 <- mod.t.test(x = logCPM2[,family == "12"], group = group12)
+res12$SD1 <- apply(logCPM2[,family == "12"][,group12 == "control"], 1, sd, na.rm = TRUE)
+res12$SD2 <- apply(logCPM2[,family == "12"][,group12 == "FSHD"], 1, sd, na.rm = TRUE)
+table(group12)
+res12$n1 <- 6
+res12$n2 <- 6
+names(res12)[10:13] <- c("SD of control", "SD of FSHD", "n of control", "n of FSHD")
+
+## family 16
+group16 <- group[family == "16"]
+res16 <- mod.t.test(x = logCPM2[,family == "16"], group = group16)
+res16$SD1 <- apply(logCPM2[,family == "16"][,group16 == "control"], 1, sd, na.rm = TRUE)
+res16$SD2 <- apply(logCPM2[,family == "16"][,group16 == "FSHD"], 1, sd, na.rm = TRUE)
+table(group16)
+res16$n1 <- 6
+res16$n2 <- 6
+names(res16)[10:13] <- c("SD of control", "SD of FSHD", "n of control", "n of FSHD")
+```
+
+
+## Export results
+
+```{r}
+## family 12
+res.GSE123468_12 <- res12
+res.GSE123468_12$ENSEMBL <- IDs
+save(res.GSE123468_12, file = "summary_GSE123468_Fam12.RData")
+
+## family 16
+res.GSE123468_16 <- res16
+res.GSE123468_16$ENSEMBL <- IDs
+save(res.GSE123468_16, file = "summary_GSE123468_Fam16.RData")
+```
+
+
+## Software information
+
+```{r}
+sessionInfo()
+```

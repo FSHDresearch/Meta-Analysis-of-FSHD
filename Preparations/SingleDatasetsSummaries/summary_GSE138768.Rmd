@@ -1,0 +1,70 @@
+---
+title: "Summary of GSE138768 for Meta-Analysis"
+author: "T. Schaetzl and M. Kohl"
+date: "December 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    theme: united
+    highlight: tango
+---
+
+
+## Import preprocessed data
+
+```{r}
+exportData <- readRDS(file = "../rds/GSE138768data.rds")
+logCPM <- t(exportData[,3:ncol(exportData)])
+```
+
+
+## Extract ENSEMBL IDs
+
+```{r}
+ensemblIDs <- sapply(strsplit(rownames(logCPM), "\\."), "[", 3)
+```
+
+
+## Calculate mean of replicated ENSEMBL IDs
+
+```{r}
+IDs <- unique(ensemblIDs)
+logCPM2 <- matrix(0,ncol = ncol(logCPM), nrow = length(IDs))
+for(i in 1:length(IDs)){
+  logCPM2[i,] <- colMeans(logCPM[ensemblIDs==IDs[i],, drop = FALSE], na.rm = TRUE)
+}
+rownames(logCPM2) <- IDs
+```
+
+
+## Determine sample size, mean, and SD per group
+
+```{r}
+library(MKomics)
+group <- factor(exportData$group)
+group <- factor(group, labels = c("DUX4", "control"))
+group <- factor(group, levels = c("control", "DUX4"))
+res <- mod.t.test(x = logCPM2, group = group)
+res$SD1 <- apply(logCPM2[,group == "control"], 1, sd, na.rm = TRUE)
+res$SD2 <- apply(logCPM2[,group == "DUX4"], 1, sd, na.rm = TRUE)
+table(group)
+res$n1 <- 4
+res$n2 <- 4
+names(res)[10:13] <- c("SD of control", "SD of DUX4", "n of control", "n of DUX4")
+```
+
+
+## Export results
+
+```{r}
+res.GSE138768 <- res
+res.GSE138768$ENSEMBL <- IDs
+save(res.GSE138768, file = "summary_GSE138768.RData")
+```
+
+
+## Software information
+
+```{r}
+sessionInfo()
+```

@@ -1,0 +1,67 @@
+---
+title: "Summary of GSE56787 (biopsies) for Meta-Analysis"
+author: "T. Schaetzl and M. Kohl"
+date: "December 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    theme: united
+    highlight: tango
+---
+
+
+## Import preprocessed data
+
+```{r}
+exportData <- readRDS(file = "../rds/GSE56787data_biopsy.rds")
+logCPM <- t(exportData[,16:ncol(exportData)])
+```
+
+
+## Extract ENSEMBL IDs
+
+```{r}
+ensemblIDs <- sapply(strsplit(rownames(logCPM), "\\."), "[", 3)
+```
+
+
+## Calculate mean of replicated ENSEMBL IDs
+
+```{r}
+IDs <- unique(ensemblIDs)
+logCPM2 <- matrix(0,ncol = ncol(logCPM), nrow = length(IDs))
+for(i in 1:length(IDs)){
+  logCPM2[i,] <- colMeans(logCPM[ensemblIDs==IDs[i],, drop = FALSE], na.rm = TRUE)
+}
+rownames(logCPM2) <- IDs
+```
+
+
+## Determine sample size, mean, and SD per group
+
+```{r}
+library(MKomics)
+res <- mod.t.test (x = logCPM2, group = exportData$group)
+res$SD1 <- apply(logCPM2[,exportData$group == "control"], 1, sd, na.rm = TRUE)
+res$SD2 <- apply(logCPM2[,exportData$group == "FSHD"], 1, sd, na.rm = TRUE)
+table(exportData$group)
+res$n1 <- 8
+res$n2 <- 15
+names(res)[10:13] <- c("SD of control", "SD of FSHD", "n of control", "n of FSHD")
+```
+
+
+## Export results
+
+```{r}
+res.GSE56787 <- res
+res.GSE56787$ENSEMBL <- IDs
+save(res.GSE56787, file = "summary_GSE56787biopsies.RData")
+```
+
+
+## Software information
+
+```{r}
+sessionInfo()
+```

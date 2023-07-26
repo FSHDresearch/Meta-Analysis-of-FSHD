@@ -1,0 +1,67 @@
+---
+title: "Summary GSE115650 for Meta-Analysis"
+author: "T. Schaetzl and M. Kohl"
+date: "December 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    theme: united
+    highlight: tango
+---
+
+
+## Import preprocessed data
+
+```{r}
+exportData <- readRDS(file = "../rds/GSE115650data.rds")
+voomData <- t(exportData[,16:ncol(exportData)])
+```
+
+
+## Extract ENSEMBL IDs
+
+```{r}
+ensemblIDs <- sapply(strsplit(rownames(voomData), "\\."), "[", 1)
+```
+
+
+## Calculate mean of replicated ENSEMBL IDs
+
+```{r}
+IDs <- unique(ensemblIDs)
+voomData2 <- matrix(0,ncol = ncol(voomData), nrow = length(IDs))
+for(i in 1:length(IDs)){
+  voomData2[i,] <- colMeans(voomData[ensemblIDs==IDs[i],, drop = FALSE], na.rm = TRUE)
+}
+rownames(voomData2) <- IDs
+```
+
+
+## Determine sample size, mean, and SD per group
+
+```{r}
+library(MKomics)
+res <- mod.t.test(x = voomData2, group = exportData$group)
+res$SD1 <- apply(voomData2[,exportData$group == "control"], 1, sd, na.rm = TRUE)
+res$SD2 <- apply(voomData2[,exportData$group == "FSHD"], 1, sd, na.rm = TRUE)
+table(exportData$group)
+res$n1 <- 9
+res$n2 <- 33
+names(res)[10:13] <- c("SD of control", "SD of FSHD", "n of control", "n of FSHD")
+```
+
+
+## Export results
+
+```{r}
+res.GSE115650 <- res
+res.GSE115650$ENSEMBL <- IDs
+save(res.GSE115650, file = "summary_GSE115650.RData")
+```
+
+
+## Software information
+
+```{r}
+sessionInfo()
+```

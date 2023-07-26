@@ -1,0 +1,85 @@
+---
+title: "Summary of GSE26061 for Meta-Analysis"
+author: "T. Schätzl and M. Kohl"
+date: "December 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    theme: united
+    highlight: tango
+---
+
+
+## Import preprocessed data
+
+```{r}
+exportData <- readRDS(file = "../rds/GSE26061data.rds")
+normData <- t(exportData[,11:ncol(exportData)])
+```
+
+
+## Get annotation information
+
+```{r}
+library(org.Hs.eg.db)
+library(huex10sttranscriptcluster.db)
+GeneID <- select(huex10sttranscriptcluster.db, 
+                 keys = keys(huex10sttranscriptcluster.db), 
+                 columns = c("ENSEMBL", "ENTREZID", "SYMBOL"))
+```
+
+
+## Calculate mean of replicated ENSEMBL IDs
+
+```{r}
+GeneID2 <- GeneID[,c("PROBEID","ENSEMBL")]
+GeneID2 <- GeneID2[!is.na(GeneID2$ENSEMBL),]
+GeneID3 <- sapply(split(GeneID2$ENSEMBL, GeneID2$PROBEID),function(x){paste(sort(x),collapse = " | ")})
+GeneID4 <- data.frame(PROBEID=names(GeneID3), ENSEMBL=GeneID3)
+normData2 <- data.frame(normData)
+normData2$PROBEID <- rownames(normData)
+ind <- grep("^X", rownames(normData))
+normData2$PROBEID[ind] <- sapply(strsplit(rownames(normData)[ind], "^X"), "[", 2)
+normData2 <- merge(normData2, GeneID4, by = "PROBEID", all.x = TRUE)
+normData2 <- normData2[!is.na(normData2$ENSEMBL),]
+normData2 <- normData2[,names(normData2)!= "PROBEID"]
+normData2 <- normData2[!duplicated(normData2),]
+IDs <- unique(normData2$ENSEMBL)
+normData3 <- matrix(0,ncol = ncol(normData2)-1, nrow = length(IDs))
+ind <- names(normData2)!= "ENSEMBL"
+for(i in 1:length(IDs)){
+  normData3[i,] <- colMeans(normData2[normData2$ENSEMBL==IDs[i], ind, drop = FALSE], na.rm = TRUE)
+}
+rownames(normData3) <- IDs
+```
+
+
+## Determine sample size, mean, and SD per group
+
+```{r}
+library(MKomics)
+res <- mod.t.test(x = normData3, group = exportData$group)
+res$SD1 <- apply(normData3[,exportData$group == "control"], 1, sd, na.rm = TRUE)
+res$SD2 <- apply(normData3[,exportData$group == "FSHD"], 1, sd, na.rm = TRUE)
+table(exportData$group)
+res$n1 <- 6
+res$n2 <- 10
+names(res)[10:13] <- c("SD of control", "SD of FSHD", "n of control", "n of FSHD")
+```
+
+
+## Export results
+
+```{r}
+res.GSE26061 <- res
+res.GSE26061$ENSEMBL <- IDs
+save(res.GSE26061, file = "summary_GSE26061.RData")
+```
+
+
+## Software information
+
+```{r}
+sessionInfo()
+```
+
