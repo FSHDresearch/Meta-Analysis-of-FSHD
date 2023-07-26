@@ -1,0 +1,842 @@
+---
+title: "Random-Effects Meta-Analysis"
+author: "T. Schätzl and M. Kohl"
+date: "December 2022"
+output:
+  rmarkdown::html_document:
+    toc: true
+    theme: united
+    highlight: tango
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+## Load summarized data
+
+```{r}
+## read all RData files from folder summary
+files.all <- list.files(path = "../summary", full.names = TRUE)
+files.RData <- files.all[grep("RData", files.all)]
+for(i in 1:length(files.RData)){
+  load(files.RData[i])
+}
+```
+
+
+## Merge summarized data
+
+```{r}
+###############################################################################
+## GSE10760
+###############################################################################
+tmp <- res.GSE10760[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                       "SD of control", "SD of FSHD", "n of control", 
+                       "n of FSHD")]
+names(tmp)[2:7] <- c("GSE10760.Mctrl", "GSE10760.Mfshd", 
+                     "GSE10760.SDctrl", "GSE10760.SDfshd",
+                     "GSE10760.nctrl", "GSE10760.nfshd")
+resData <- tmp
+
+
+###############################################################################
+## GSE15090
+###############################################################################
+tmp <- res.GSE15090[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                       "SD of control", "SD of FSHD", "n of control",
+                       "n of FSHD")]
+names(tmp)[2:7] <- c("GSE15090.Mctrl", "GSE15090.Mfshd", 
+                     "GSE15090.SDctrl", "GSE15090.SDfshd",
+                     "GSE15090.nctrl", "GSE15090.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## GSE26061
+###############################################################################
+tmp <- res.GSE26061[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                       "SD of control", "SD of FSHD", "n of control",
+                       "n of FSHD")]
+names(tmp)[2:7] <- c("GSE26061.Mctrl", "GSE26061.Mfshd", 
+                     "GSE26061.SDctrl", "GSE26061.SDfshd",
+                     "GSE26061.nctrl", "GSE26061.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## GSE26145
+###############################################################################
+tmp <- res.GSE26145[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                       "SD of control", "SD of FSHD", "n of control",
+                       "n of FSHD")]
+names(tmp)[2:7] <- c("GSE26145.Mctrl", "GSE26145.Mfshd", 
+                     "GSE26145.SDctrl", "GSE26145.SDfshd",
+                     "GSE26145.nctrl", "GSE26145.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## GSE26852
+###############################################################################
+tmp <- res.GSE26852[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                       "SD of control", "SD of FSHD", "n of control",
+                       "n of FSHD")]
+names(tmp)[2:7] <- c("GSE26852.Mctrl", "GSE26852.Mfshd", 
+                     "GSE26852.SDctrl", "GSE26852.SDfshd",
+                     "GSE26852.nctrl", "GSE26852.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## GSE36398
+###############################################################################
+tmp <- res.GSE36398[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                       "SD of control", "SD of FSHD", "n of control",
+                       "n of FSHD")]
+names(tmp)[2:7] <- c("GSE36398.Mctrl", "GSE36398.Mfshd", 
+                     "GSE36398.SDctrl", "GSE36398.SDfshd",
+                     "GSE36398.nctrl", "GSE36398.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## GSE56787
+###############################################################################
+tmp <- res.GSE56787[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                       "SD of control", "SD of FSHD", "n of control",
+                       "n of FSHD")]
+names(tmp)[2:7] <- c("GSE56787.Mctrl", "GSE56787.Mfshd", 
+                     "GSE56787.SDctrl", "GSE56787.SDfshd",
+                     "GSE56787.nctrl", "GSE56787.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## GSE56787 cellines
+###############################################################################
+tmp <- res.GSE56787celllines[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                       "SD of control", "SD of FSHD", "n of control",
+                       "n of FSHD")]
+names(tmp)[2:7] <- c("GSE56787celllines.Mctrl", "GSE56787celllines.Mfshd", 
+                     "GSE56787celllines.SDctrl", "GSE56787celllines.SDfshd",
+                     "GSE56787celllines.nctrl", "GSE56787celllines.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## GSE115650
+###############################################################################
+tmp <- res.GSE115650[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                       "SD of control", "SD of FSHD", "n of control",
+                       "n of FSHD")]
+names(tmp)[2:7] <- c("GSE115650.Mctrl", "GSE115650.Mfshd", 
+                     "GSE115650.SDctrl", "GSE115650.SDfshd",
+                     "GSE115650.nctrl", "GSE115650.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## GSE123468_12
+###############################################################################
+tmp <- res.GSE123468_12[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                        "SD of control", "SD of FSHD", "n of control",
+                        "n of FSHD")]
+names(tmp)[2:7] <- c("GSE123468_12.Mctrl", "GSE123468_12.Mfshd", 
+                     "GSE123468_12.SDctrl", "GSE123468_12.SDfshd",
+                     "GSE123468_12.nctrl", "GSE123468_12.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## GSE123468_16
+###############################################################################
+tmp <- res.GSE123468_16[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                           "SD of control", "SD of FSHD", "n of control",
+                           "n of FSHD")]
+names(tmp)[2:7] <- c("GSE123468_16.Mctrl", "GSE123468_16.Mfshd", 
+                     "GSE123468_16.SDctrl", "GSE123468_16.SDfshd",
+                     "GSE123468_16.nctrl", "GSE123468_16.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## EGAD00001008337
+###############################################################################
+tmp <- res.EGA[,c("ENSEMBL", "mean of control", "mean of FSHD",
+                  "SD of control", "SD of FSHD", "n of control",
+                  "n of FSHD")]
+names(tmp)[2:7] <- c("EGAD00001008337.Mctrl", "EGAD00001008337.Mfshd", 
+                     "EGAD00001008337.SDctrl", "EGAD00001008337.SDfshd",
+                     "EGAD00001008337.nctrl", "EGAD00001008337.nfshd")
+resData <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+
+
+###############################################################################
+## GSE138768 (DUX4)
+###############################################################################
+tmp <- res.GSE138768[,c("ENSEMBL", "mean of control", "mean of DUX4",
+                        "SD of control", "SD of DUX4", "n of control",
+                        "n of DUX4")]
+names(tmp)[2:7] <- c("GSE138768.Mctrl", "GSE138768.Mfshd",
+                     "GSE138768.SDctrl", "GSE138768.SDfshd",
+                     "GSE138768.nctrl", "GSE138768.nfshd")
+resData.D4 <- merge(resData, tmp, by = "ENSEMBL", all = TRUE)
+```
+
+
+## Get annotation information
+
+```{r}
+library(AnnotationHub)
+ah <- AnnotationHub()
+query(ah, "EnsDb")
+ahDb <- query(ah, pattern = c("Homo sapiens", "EnsDb", 108))
+ahEdb <- ahDb[[1]]
+gns <- genes(ahEdb)
+gnsIDs <- gns@elementMetadata@listData
+resData$gene_name <- ""
+resData$entrezid <- ""
+for(i in 1:nrow(resData)){
+  ensembleIDs <- unlist(strsplit(resData$ENSEMBL[i], " \\| "))
+  sel <- which(gnsIDs$gene_id %in% ensembleIDs)
+  gene.name <- gnsIDs$gene_name[sel]
+  if(length(gene.name) > 0) gene.name <- gene.name[gene.name != ""]
+  resData$gene_name[i] <- paste(sort(unique(gene.name)), collapse = " | ")
+  entrezID <- gnsIDs$entrezid[sel]
+  entrezID <- unlist(entrezID[!is.na(entrezID)])
+  resData$entrezid[i] <- paste(sort(unique(entrezID)), collapse = " | ")
+}
+```
+
+
+## Filter
+
+```{r}
+## only genes that were measured at least three times
+resData <- resData[which(rowSums(!is.na(resData[,2:73])) >= 18),]
+```
+
+```{r}
+library(metafor)
+effs <- numeric(nrow(resData))
+
+ind.Mctrl <- grep("Mctrl", names(resData))
+ind.Mfshd <- grep("Mfshd", names(resData))
+ind.SDctrl <- grep("SDctrl", names(resData))
+ind.SDfshd <- grep("SDfshd", names(resData))
+ind.nctrl <- grep("nctrl", names(resData))
+ind.nfshd <- grep("nfshd", names(resData))
+for(i in 1:nrow(resData)){
+  tmp <- escalc(measure = "SMDH", 
+                m1i = unlist(resData[i,ind.Mfshd]),
+                m2i = unlist(resData[i,ind.Mctrl]),
+                sd1i = unlist(resData[i,ind.SDfshd]),
+                sd2i = unlist(resData[i,ind.SDctrl]),
+                n1i = unlist(resData[i,ind.nfshd]),
+                n2i = unlist(resData[i,ind.nctrl]))
+  fit <- try(rma(yi, vi, data = tmp, measure = "SMDH", method = "REML"))
+  if(inherits(fit, "try-error")){
+    effs[i] <- NA
+  }else{
+    effs[i] <- fit$beta[1,1]
+  }
+}
+## at least small effect size
+resData <- resData[which(abs(effs) > 0.2),]
+```
+
+
+## Meta-analysis
+
+```{r}
+library(metafor)
+library(metasens)
+pvals <- numeric(nrow(resData))
+effs <- numeric(nrow(resData))
+CIlow <- numeric(nrow(resData))
+CIupp <- numeric(nrow(resData))
+I2 <- numeric(nrow(resData))
+pvals.fix <- numeric(nrow(resData))
+k <- numeric(nrow(resData))
+egger.pval <- numeric(nrow(resData))
+trimfill.side <- character(nrow(resData))
+trimfill.nr <- numeric(nrow(resData))
+lfk.res <- character(nrow(resData))
+
+
+ind.Mctrl <- grep("Mctrl", names(resData))
+ind.Mfshd <- grep("Mfshd", names(resData))
+ind.SDctrl <- grep("SDctrl", names(resData))
+ind.SDfshd <- grep("SDfshd", names(resData))
+ind.nctrl <- grep("nctrl", names(resData))
+ind.nfshd <- grep("nfshd", names(resData))
+for(i in 1:nrow(resData)){
+  tmp <- escalc(measure = "SMDH", 
+                m1i = unlist(resData[i,ind.Mfshd]),
+                m2i = unlist(resData[i,ind.Mctrl]),
+                sd1i = unlist(resData[i,ind.SDfshd]),
+                sd2i = unlist(resData[i,ind.SDctrl]),
+                n1i = unlist(resData[i,ind.nfshd]),
+                n2i = unlist(resData[i,ind.nctrl]))
+  ## random-effects meta-analysis
+  fit <- try(rma(yi, vi, data = tmp, measure = "SMDH", method = "REML"))
+  if(inherits(fit, "try-error")){
+    pvals[i] <- NA
+    effs[i] <- NA
+    CIlow[i] <- NA
+    CIupp[i] <- NA
+    I2[i] <- NA
+    k[i] <- NA
+    egger.pval[i] <- NA
+    trimfill.side[i] <- NA
+    trimfill.nr[i] <- NA
+    lfk.res[i] <- NA
+  }else{
+    pvals[i] <- fit$pval
+    effs[i] <- fit$beta[1,1]
+    CIlow[i] <- fit$ci.lb
+    CIupp[i] <- fit$ci.ub
+    I2[i] <- fit$I2
+    k[i] <- fit$k
+    ## Egger test
+    res.regtest <- try(regtest(fit, model = "lm"))
+    if(inherits(res.regtest, "try-error")){
+      egger.pval[i] <- NA
+    }else{
+      egger.pval[i] <- res.regtest$pval
+    }
+    ## trim-and-fill analysis
+    tf.fit <- try(trimfill(fit))
+    if(inherits(tf.fit, "try-error")){
+      trimfill.side[i] <- NA
+      trimfill.nr[i] <- NA
+    }else{
+      trimfill.side[i] <- tf.fit$side
+      trimfill.nr[i] <- tf.fit$k0
+    }
+    ## LFK index
+    lfk <- lfkindex(yi, sqrt(vi), data = tmp)
+    lfk.res[i] <- lfk$interpretation
+  }
+  ## fixed-effects meta-analysis
+  fit2 <- try(rma(yi, vi, data = tmp, measure = "SMDH", method = "FE"))
+  if(inherits(fit2, "try-error")){
+    pvals.fix[i] <- NA
+  }else{
+    pvals.fix[i] <- fit2$pval
+  }
+}
+
+## add results to resData
+resData$p.value <- pvals
+resData$eff <- effs
+resData$CI.low <- CIlow
+resData$CI.upp <- CIupp
+resData$I2 <- I2
+resData$p.value.fix <- pvals.fix
+resData$k <- k
+resData$egger.pval <- egger.pval
+resData$trimfill.side <- trimfill.side
+resData$trimfill.nr <- trimfill.nr
+resData$lfk.res <- lfk.res
+## adjust p values by FDR
+resData$adj.p.value <- p.adjust(resData$p.value, method = "fdr")
+resData$adj.p.value.fix <- p.adjust(resData$p.value.fix, method = "fdr")
+## add DUX4 dataset
+resData <- merge(resData, resData.D4[,c(1,74:79)], by = "ENSEMBL", all.x = TRUE)
+```
+
+
+## Export results
+
+```{r}
+save(resData, file = "Results_meta.RData")
+```
+
+
+## Investigation of heterogeneity
+
+```{r}
+## might not be important
+sum(resData$I2 <= 40)
+## moderate heterogeneity
+sum(resData$I2 >= 30 & resData$I2 <= 60)
+## substantial heterogeneity
+sum(resData$I2 >= 50 & resData$I2 <= 90)
+## considerable heterogeneity
+sum(resData$I2 >= 75)
+```
+
+
+## Investigation of publication bias
+
+### Regression test by Egger
+
+```{r}
+## raw p-values
+sum(resData$egger.pval < 0.05)
+## FDR adjusted p-values
+sum(p.adjust(resData$egger.pval, method = "fdr") < 0.05)
+```
+
+
+### Trim-and-fill analysis
+
+```{r}
+library(DescTools)
+## all meta-analyses
+Freq(as.factor(resData$trimfill.nr), useNA = "ifany")
+## significant meta-analyses
+Freq(as.factor(resData$trimfill.nr[which(resData$adj.p.value < 0.05)]), useNA = "ifany")
+```
+
+
+### LFK index
+
+```{r}
+## all meta-analyses
+Freq(resData$lfk.res, useNA = "ifany")
+## significant meta-analyses
+Freq(resData$lfk.res[which(resData$adj.p.value < 0.05)], useNA = "ifany")
+```
+
+
+## Number of significant results
+
+### Random-effects meta-analysis
+
+```{r}
+## raw p-values
+sum(resData$p.value < 0.05)
+## FDR adjusted p-values
+sum(resData$adj.p.value < 0.05)
+
+```
+
+
+### Fixed-effects meta-analysis
+
+```{r}
+## raw p-values
+sum(resData$p.value.fix < 0.05)
+## FDR adjusted p-values
+sum(resData$adj.p.value.fix < 0.05)
+```
+
+
+## Draw heatmap
+
+```{r}
+library(ComplexHeatmap)
+library(circlize)
+library(RColorBrewer)
+## Preparation of data
+resData.sig <- resData[which(resData$adj.p.value < 0.05),]
+DS <- unique(sapply(strsplit(names(resData.sig)[c(2:73,89:94)], "\\."), "[", 1))
+diffData <- matrix(ncol = length(DS), nrow = nrow(resData.sig))
+colnames(diffData) <- DS
+ind.Mctrl <- grep("Mctrl", names(resData.sig))
+ind.Mfshd <- grep("Mfshd", names(resData.sig))
+ind.SDctrl <- grep("SDctrl", names(resData.sig))
+ind.SDfshd <- grep("SDfshd", names(resData.sig))
+ind.nctrl <- grep("nctrl", names(resData.sig))
+ind.nfshd <- grep("nfshd", names(resData.sig))
+for(i in 1:nrow(diffData)){
+  tmp <- escalc(measure = "SMDH", 
+                m1i = unlist(resData.sig[i,ind.Mfshd]),
+                m2i = unlist(resData.sig[i,ind.Mctrl]),
+                sd1i = unlist(resData.sig[i,ind.SDfshd]),
+                sd2i = unlist(resData.sig[i,ind.SDctrl]),
+                n1i = unlist(resData.sig[i,ind.nfshd]),
+                n2i = unlist(resData.sig[i,ind.nctrl]))
+  diffData[i,] <- tmp$yi
+}
+diffData <- cbind(diffData, resData.sig$eff)
+colnames(diffData)[14] <- "Meta-Analysis"
+rownames(diffData) <- resData.sig$gene_name
+selData <- diffData[order(diffData[,14], decreasing = TRUE),]
+selData <- selData[,c(13,1:12,14)]
+colnames(selData)[1] <- paste(colnames(selData)[1], "(DUX4)")
+## prepartion of heatmap
+col1 <- rev(brewer.pal(n = 11, name = "RdYlBu"))
+mycol <- colorRamp2(seq(-2, 2, length = 128), colorRampPalette(col1)(128))
+col2 <- hcl.colors(10)
+df <- data.frame("Technology" = factor(c("HiSeq 2500", "HG-U133A+B", "HG-U133_Plus_2", "HuEx10stv2_Hs_ENSG",
+                                "HuEx-1_0-st", "HumanHT-12 V3.0", "HuGene-1_0-st",
+                                "HiSeq 2500", "HiSeq 2500", "HiSeq 2500",
+                                "HiSeq 2500", "HiSeq 2500", "NextSeq 500", "Meta-Analysis"), 
+                                levels = c("HG-U133A+B", "HG-U133_Plus_2", "HuEx10stv2_Hs_ENSG",
+                                           "HuEx-1_0-st", "HumanHT-12 V3.0", "HuGene-1_0-st",
+                                           "HiSeq 2500", "NextSeq 500", "Meta-Analysis")))
+ha <- HeatmapAnnotation(df = df, 
+                        col = list("Technology" = factor(c("HG-U133A+B" = col2[1], 
+                                                  "HG-U133_Plus_2" = col2[2], 
+                                                  "HuEx10stv2_Hs_ENSG" = col2[3],
+                                                  "HuEx-1_0-st" = col2[4], 
+                                                  "HumanHT-12 V3.0" = col2[5], 
+                                                  "HuGene-1_0-st" = col2[6],
+                                                  "HiSeq 2500" = col2[7], 
+                                                  "NextSeq 500" = col2[8],
+                                                  "Meta-Analysis" = col2[9]))),
+                        show_annotation_name = FALSE,
+                        annotation_legend_param = list(nrow = 2, title = "", 
+                                                       labels_gp = gpar(fontsize = 12)))
+## generate heatmap
+hm <- Heatmap(selData, col = mycol, top_annotation = ha, na_col = "grey",
+        heatmap_legend_param = list(title = "STD\nlog2-FC",
+                                    title_gp = gpar(fontsize = 12, fontface = "bold"),
+                                    legend_height = unit(7, "cm"),
+                                    at = seq(-2, 2, by = 0.5)),
+        column_title = rep("", 3),
+        show_row_names = FALSE,
+        row_names_gp = gpar(fontsize = 3), use_raster = FALSE,
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        column_split = factor(c("DUX4", rep("Technology", 12), "Meta-Analysis"),
+                              levels = c("DUX4", "Technology", "Meta-Analysis")),
+        row_split = factor(c(rep("FSHD up", sum(selData[,14] > 0)),
+                      rep("FSHD down", sum(selData[,14] < 0))),
+                      levels = c("FSHD up", "FSHD down")))
+draw(hm, annotation_legend_side = "bottom")
+```
+
+
+## Export data of heatmap
+
+```{r}
+library(openxlsx)
+hmData <- data.frame(diffData, p_value = resData.sig$p.value,
+                     adj_p_value = resData.sig$adj.p.value,
+                     ENSEMBL = resData.sig$ENSEMBL, 
+                     gene_name = resData.sig$gene_name, 
+                     ENTREZID = resData.sig$entrezid)
+hmData <- data.frame(hmData[order(hmData[,14], decreasing = TRUE),])
+write.xlsx(hmData, file = "Heatmap_data.xlsx")
+```
+
+
+## LOO sensitivity analysis
+
+### Dataset level
+
+```{r}
+dataSets <- unique(sapply(strsplit(names(resData), "\\."), "[", 1))[2:13]
+resData.LOO <- vector(mode = "list", length = length(dataSets))
+names(resData.LOO) <- dataSets
+j <- 0
+for(Name in dataSets){
+  j <- j + 1
+  cat("======================================\n")
+  cat("j:\t", j, "\n")
+  cat("======================================\n")
+  ind.rm <- grep(Name, names(resData))
+  resData.red <- resData[,-ind.rm]
+  ## only genes that were measured at least three times
+  resData.red <- resData.red[rowSums(!is.na(resData.red[,2:67])) >= 18,]
+  ## only genes with at least a small effect (d >= 0.2)
+  resData.red <- resData.red[which(abs(resData.red$eff) > 0.2),]
+  pvals <- numeric(nrow(resData.red))
+  effs <- numeric(nrow(resData.red))
+  CIlow <- numeric(nrow(resData.red))
+  CIupp <- numeric(nrow(resData.red))
+  I2 <- numeric(nrow(resData.red))
+  
+  ind.Mctrl <- grep("Mctrl", names(resData.red))
+  ind.Mfshd <- grep("Mfshd", names(resData.red))
+  ind.SDctrl <- grep("SDctrl", names(resData.red))
+  ind.SDfshd <- grep("SDfshd", names(resData.red))
+  ind.nctrl <- grep("nctrl", names(resData.red))
+  ind.nfshd <- grep("nfshd", names(resData.red))
+  for(i in 1:nrow(resData.red)){
+    tmp <- escalc(measure = "SMDH", 
+                  m1i = unlist(resData.red[i,ind.Mfshd]),
+                  m2i = unlist(resData.red[i,ind.Mctrl]),
+                  sd1i = unlist(resData.red[i,ind.SDfshd]),
+                  sd2i = unlist(resData.red[i,ind.SDctrl]),
+                  n1i = unlist(resData.red[i,ind.nfshd]),
+                  n2i = unlist(resData.red[i,ind.nctrl]))
+    fit <- try(rma(yi, vi, data = tmp, measure = "SMDH", method = "REML"))
+    if(inherits(fit, "try-error")){
+      pvals[i] <- NA
+      effs[i] <- NA
+      CIlow[i] <- NA
+      CIupp[i] <- NA
+      I2[i] <- NA
+    }else{
+      pvals[i] <- fit$pval
+      effs[i] <- fit$beta[1,1]
+      CIlow[i] <- fit$ci.lb
+      CIupp[i] <- fit$ci.ub
+      I2[i] <- fit$I2
+    }
+  }
+  resData.red$p.value <- pvals
+  resData.red$adj.p.value <- p.adjust(pvals, method = "fdr")
+  resData.red$eff <- effs
+  resData.red$CI.low <- CIlow
+  resData.red$CI.upp <- CIupp
+  resData.red$I2 <- I2
+  resData.LOO[[j]] <- resData.red
+}
+
+## Nunber of studies for significant genes
+table(resData.sig$k)
+## at least four datasets
+nrow(resData.sig[resData.sig$k > 3,])
+
+## number of significant results 
+sapply(resData.LOO, function(x) sum(x$p.value < 0.05, na.rm = TRUE))
+sapply(resData.LOO, function(x) sum(x$adj.p.value < 0.05, na.rm = TRUE))
+
+## overlap between LOO results
+resData.LOO.sig <- lapply(resData.LOO, function(x) x[x$p.value < 0.05,c("ENSEMBL", "p.value", "adj.p.value")])
+intersect.sig <- resData.LOO.sig[[1]]$ENSEMBL
+for(i in 2:length(resData.LOO.sig)){
+  intersect.sig <- intersect(intersect.sig, resData.LOO.sig[[i]]$ENSEMBL)
+}
+length(intersect(intersect.sig, resData.sig$ENSEMBL))
+length(intersect(intersect.sig, resData.sig$ENSEMBL))/nrow(resData.sig[resData.sig$k > 3,])
+```
+
+
+### Study level
+
+```{r}
+studies <- unique(sapply(strsplit(names(resData), "\\."), "[", 1))[2:13]
+studies[c(7,10)] <- c("GSE56787", "GSE123468")
+studies <- studies[-c(8,11)]
+resData.LOO2 <- vector(mode = "list", length = length(studies))
+names(resData.LOO2) <- studies
+j <- 0
+for(Name in studies){
+  j <- j + 1
+  cat("======================================\n")
+  cat("j:\t", j, "\n")
+  cat("======================================\n")
+  ind.rm <- grep(Name, names(resData))
+  resData.red <- resData[,-ind.rm]
+  ## only genes that were measured at least three times
+  resData.red <- resData.red[rowSums(!is.na(resData.red[,2:67])) >= 18,]
+  ## only genes with at least a small effect (d >= 0.2)
+  resData.red <- resData.red[which(abs(resData.red$eff) > 0.2),]
+  pvals <- numeric(nrow(resData.red))
+  effs <- numeric(nrow(resData.red))
+  CIlow <- numeric(nrow(resData.red))
+  CIupp <- numeric(nrow(resData.red))
+  I2 <- numeric(nrow(resData.red))
+  
+  ind.Mctrl <- grep("Mctrl", names(resData.red))
+  ind.Mfshd <- grep("Mfshd", names(resData.red))
+  ind.SDctrl <- grep("SDctrl", names(resData.red))
+  ind.SDfshd <- grep("SDfshd", names(resData.red))
+  ind.nctrl <- grep("nctrl", names(resData.red))
+  ind.nfshd <- grep("nfshd", names(resData.red))
+  for(i in 1:nrow(resData.red)){
+    tmp <- escalc(measure = "SMDH", 
+                  m1i = unlist(resData.red[i,ind.Mfshd]),
+                  m2i = unlist(resData.red[i,ind.Mctrl]),
+                  sd1i = unlist(resData.red[i,ind.SDfshd]),
+                  sd2i = unlist(resData.red[i,ind.SDctrl]),
+                  n1i = unlist(resData.red[i,ind.nfshd]),
+                  n2i = unlist(resData.red[i,ind.nctrl]))
+    fit <- try(rma(yi, vi, data = tmp, measure = "SMDH", method = "REML"))
+    if(inherits(fit, "try-error")){
+      pvals[i] <- NA
+      effs[i] <- NA
+      CIlow[i] <- NA
+      CIupp[i] <- NA
+      I2[i] <- NA
+    }else{
+      pvals[i] <- fit$pval
+      effs[i] <- fit$beta[1,1]
+      CIlow[i] <- fit$ci.lb
+      CIupp[i] <- fit$ci.ub
+      I2[i] <- fit$I2
+    }
+  }
+  resData.red$p.value <- pvals
+  resData.red$adj.p.value <- p.adjust(pvals, method = "fdr")
+  resData.red$eff <- effs
+  resData.red$CI.low <- CIlow
+  resData.red$CI.upp <- CIupp
+  resData.red$I2 <- I2
+  resData.LOO2[[j]] <- resData.red
+}
+
+## number of significant results 
+sapply(resData.LOO2, function(x) sum(x$p.value < 0.05, na.rm = TRUE))
+sapply(resData.LOO2, function(x) sum(x$adj.p.value < 0.05, na.rm = TRUE))
+
+## overlap between LOO results
+resData.LOO2.sig <- lapply(resData.LOO2, function(x) x[x$p.value < 0.05,c("ENSEMBL", "p.value", "adj.p.value")])
+intersect.sig2 <- resData.LOO2.sig[[1]]$ENSEMBL
+for(i in 2:length(resData.LOO2.sig)){
+  intersect.sig2 <- intersect(intersect.sig2, resData.LOO2.sig[[i]]$ENSEMBL)
+}
+length(intersect(intersect.sig2, resData.sig$ENSEMBL))
+length(intersect(intersect.sig2, resData.sig$ENSEMBL))/nrow(resData.sig[resData.sig$k > 3,])
+```
+
+
+## Enrichment analysis
+
+### Extract ENTREZ IDs
+
+```{r}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+## extract ENTREZ IDs
+entrez.list <- unique(unlist(strsplit(resData$entrezid, " \\| ")))
+entrez.list <- entrez.list[order(as.numeric(entrez.list))]
+entrez.list <- entrez.list[!is.na(entrez.list)]
+## significant up
+entrez.sig <- unique(unlist(strsplit(hmData$ENTREZID[hmData$Meta.Analysis > 0], " \\| ")))
+entrez.sig <- entrez.sig[order(as.numeric(entrez.sig))]
+entrez.up <- entrez.sig[!is.na(entrez.sig)]
+## significant down
+entrez.sig <- unique(unlist(strsplit(hmData$ENTREZID[hmData$Meta.Analysis < 0], " \\| ")))
+entrez.sig <- entrez.sig[order(as.numeric(entrez.sig))]
+entrez.dn <- entrez.sig[!is.na(entrez.sig)]
+```
+
+
+### GO classification
+
+```{r}
+## BP
+ggo.BP.up <- groupGO(gene = entrez.up, OrgDb = org.Hs.eg.db, ont = "BP",
+                     level = 2, readable = TRUE)
+ggo.BP.up@result[ggo.BP.up@result$Count > 0,]
+
+ggo.BP.dn <- groupGO(gene = entrez.dn, OrgDb = org.Hs.eg.db, ont = "BP",
+                     level = 2, readable = TRUE)
+ggo.BP.dn@result[ggo.BP.dn@result$Count > 0,]
+
+## CC
+ggo.CC.up <- groupGO(gene = entrez.up, OrgDb = org.Hs.eg.db, ont = "CC",
+                     level = 3, readable = TRUE)
+ggo.CC.up@result[ggo.CC.up@result$Count > 0,]
+
+ggo.CC.dn <- groupGO(gene = entrez.dn, OrgDb = org.Hs.eg.db, ont = "CC",
+                     level = 3, readable = TRUE)
+ggo.CC.dn@result[ggo.CC.dn@result$Count > 0,]
+
+## MF
+ggo.MF.up <- groupGO(gene = entrez.up, OrgDb = org.Hs.eg.db, ont = "MF",
+                     level = 2, readable = TRUE)
+ggo.MF.up@result[ggo.MF.up@result$Count > 0,]
+
+ggo.MF.dn <- groupGO(gene = entrez.dn, OrgDb = org.Hs.eg.db, ont = "MF",
+                     level = 2, readable = TRUE)
+ggo.MF.dn@result[ggo.MF.dn@result$Count > 0,]
+```
+
+
+### GO enrichment
+
+```{r}
+## BP
+ego.BP.up <- enrichGO(gene = entrez.up, universe = entrez.list,
+                      OrgDb = org.Hs.eg.db, ont = "BP",
+                      pAdjustMethod = "holm", pvalueCutoff = 0.05,
+                      readable = TRUE)
+head(ego.BP.up@result, n = 25)
+
+ego.BP.dn <- enrichGO(gene = entrez.dn, universe = entrez.list,
+                      OrgDb = org.Hs.eg.db, ont = "BP",
+                      pAdjustMethod = "holm", pvalueCutoff = 0.05,
+                      readable = TRUE)
+head(ego.BP.dn@result, n = 25)
+
+## CC
+ego.CC.up <- enrichGO(gene = entrez.up, universe = entrez.list,
+                      OrgDb = org.Hs.eg.db, ont = "CC",
+                      pAdjustMethod = "holm", pvalueCutoff = 0.05,
+                      readable = TRUE)
+head(ego.CC.up@result, n = 25)
+
+ego.CC.dn <- enrichGO(gene = entrez.dn, universe = entrez.list,
+                      OrgDb = org.Hs.eg.db, ont = "CC",
+                      pAdjustMethod = "holm", pvalueCutoff = 0.05,
+                      readable = TRUE)
+head(ego.CC.dn@result, n = 25)
+
+## MF
+ego.MF.up <- enrichGO(gene = entrez.up, universe = entrez.list,
+                      OrgDb = org.Hs.eg.db, ont = "MF",
+                      pAdjustMethod = "holm", pvalueCutoff = 0.05,
+                      readable = TRUE)
+head(ego.MF.up@result, n = 25)
+
+ego.MF.dn <- enrichGO(gene = entrez.dn, universe = entrez.list,
+                      OrgDb = org.Hs.eg.db, ont = "MF",
+                      pAdjustMethod = "holm", pvalueCutoff = 0.05,
+                      readable = TRUE)
+head(ego.MF.dn@result, n = 25)
+```
+
+
+### Gene Set Enrichment Analysis
+
+```{r}
+geneList <- hmData$Meta.Analysis
+entrez.id <- sapply(strsplit(hmData$ENTREZID[hmData$Meta.Analysis > 0], " \\| "), "[", 1)
+names(geneList) <- entrez.id
+geneList <- sort(geneList, decreasing = TRUE)
+
+## BP
+gse.BP <- gseGO(geneList = geneList, OrgDb = org.Hs.eg.db, ont = "BP",
+                minGSSize = 10, maxGSSize = 500, pvalueCutoff = 0.05,
+                verbose = TRUE, eps = 0)
+head(gse.BP@result, n = 25)
+
+## CC
+gse.CC <- gseGO(geneList = geneList, OrgDb = org.Hs.eg.db, ont = "CC",
+                minGSSize = 10, maxGSSize = 500, pvalueCutoff = 0.05,
+                verbose = TRUE, eps = 0)
+head(gse.CC@result, n = 25)
+
+## MF
+gse.MF <- gseGO(geneList = geneList, OrgDb = org.Hs.eg.db, ont = "MF",
+                minGSSize = 10, maxGSSize = 500, pvalueCutoff = 0.05,
+                verbose = TRUE, eps = 0)
+head(gse.MF@result, n = 25)
+```
+
+
+### Clustering of GO terms
+
+```{r}
+library(simplifyEnrichment)
+library(GO.db)
+egGO2ALLEGS <- getFromNamespace("org.Hs.egGO2ALLEGS", "org.Hs.eg.db")
+AnnotationDbi::Lkeys(egGO2ALLEGS) <- entrez.list
+GeneID.PathID <- AnnotationDbi::toTable(egGO2ALLEGS)[, c("gene_id", "go_id", "Ontology")]
+d <- duplicated(GeneID.PathID[, c("gene_id", "go_id")])
+GeneID.PathID <- GeneID.PathID[!d, ]
+GO.sig.up <- GeneID.PathID[GeneID.PathID$gene_id %in% entrez.up,]
+GO.sig.dn <- GeneID.PathID[GeneID.PathID$gene_id %in% entrez.dn,]
+## computations take long
+sim.BP.up <- GO_similarity(GO.sig.up$go_id[GO.sig.up$Ontology == "BP"], ont = "BP")
+sim.CC.up <- GO_similarity(GO.sig.up$go_id[GO.sig.up$Ontology == "CC"], ont = "CC")
+sim.MF.up <- GO_similarity(GO.sig.up$go_id[GO.sig.up$Ontology == "MF"], ont = "MF")
+sim.BP.dn <- GO_similarity(GO.sig.dn$go_id[GO.sig.dn$Ontology == "BP"], ont = "BP")
+sim.CC.dn <- GO_similarity(GO.sig.dn$go_id[GO.sig.dn$Ontology == "CC"], ont = "CC")
+sim.MF.dn <- GO_similarity(GO.sig.dn$go_id[GO.sig.dn$Ontology == "MF"], ont = "MF")
+## computations take long
+res.CC.up <- simplifyGO(sim.CC.up, column_title = "GO CC - FSHD up")
+res.MF.up <- simplifyGO(sim.MF.up, column_title = "GO MF - FSHD up")
+res.CC.dn <- simplifyGO(sim.CC.dn, column_title = "GO CC - FSHD down")
+res.MF.dn <- simplifyGO(sim.MF.dn, column_title = "GO MF - FSHD down")
+## computation take very long
+res.BP.up <- simplifyGO(sim.BP.up, column_title = "GO BP - FSHD up")
+res.BP.dn <- simplifyGO(sim.BP.dn, column_title = "GO BP - FSHD down")
+```
+
+
+## Software information
+
+```{r}
+sessionInfo()
+```
