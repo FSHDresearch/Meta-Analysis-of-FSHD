@@ -1,7 +1,7 @@
 ---
 title: "Analysis of GSE123468 (Family 12)"
 author: "T. Schaetzl and M. Kohl"
-date: "May 2023"
+date: "December 2022"
 output:
   rmarkdown::html_document:
     theme: united
