@@ -2,7 +2,17 @@
 
 The repository includes analysis files used for our study
 
-**Novel insights in the FSHD pathology: meta-analysis reveals misregulation of the neuromuscular junction, nuclear envelope, and spliceosome**
+**Meta-analysis towards FSHD reveals misregulation of neuromuscular junction, nuclear envelope, and spliceosome**
+
+published open access in 
+
+<img src="https://github.com/stamats/metaFSHD/raw/main/Communications_Biology_cover.png" alt="Nature Communication biology" width="240"/> 
+
+see
+
+https://www.nature.com/articles/s42003-024-06325-z
+
+https://www.nature.com/articles/s42003-024-06325-z.pdf (pdf)
 
 
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
