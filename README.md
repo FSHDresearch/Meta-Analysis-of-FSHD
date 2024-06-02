@@ -6,7 +6,7 @@ The repository includes analysis files used for our study
 
 published open access in 
 
-<img src="https://github.com/stamats/metaFSHD/raw/main/Communications_Biology_cover.png" alt="Nature Communication biology" width="240"/> 
+<img src="https://github.com/FSHDresearch/Meta-Analysis-of-FSHD/raw/main/Communications_Biology_cover.png" alt="Nature Communication biology" width="240"/> 
 
 see
 
