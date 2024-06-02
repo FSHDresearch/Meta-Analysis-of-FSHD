@@ -1,4 +1,4 @@
-<img src="https://github.com/FSHDresearch/Meta-Analysis-of-FSHD/blob/11dec0050c7a172146e99de3cc6e630df42f7939/FSHD_MA_summary.png" alt="MKomics" width="1000"/>
+<img src="https://github.com/FSHDresearch/Meta-Analysis-of-FSHD/raw/main/FSHD_MA_summary.png" alt="MKomics" width="1000"/>
 
 The repository includes analysis files used for our study
 
